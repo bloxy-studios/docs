@@ -1,0 +1,95 @@
+---
+title: "groot.json — your workspace manifest"
+sidebarTitle: "groot.json"
+description: "groot.json records what groot scaffolded in your workspace. Learn its structure, how it's used by groot add and groot doctor, and how to read it."
+---
+
+Every workspace groot creates contains a `groot.json` file at its root. This manifest is groot's memory — it records what was scaffolded, by which generator version, at which path, and on which port. The commands `groot add` and `groot doctor` read it to understand what your workspace looks like before they do anything.
+
+## What it is
+
+`groot.json` is written by `groot init` and updated by `groot add`. It is never read by your apps at runtime — it exists purely for groot's own tooling. Think of it as a lock file for your workspace's *shape* rather than its dependencies.
+
+The manifest also doubles as the schema for the dry-run JSON output of `groot init --dry-run --json` and `groot add --dry-run --json`, so agents and CI scripts can inspect a proposed scaffold plan before any files are written.
+
+## Example
+
+```json groot.json
+{
+  "$schema": "https://raw.githubusercontent.com/bloxy-studios/groot/main/schemas/groot.schema.json",
+  "version": 1,
+  "createdWith": "create-groot@0.5.0",
+  "conventions": {
+    "packagesNamespace": "@repo"
+  },
+  "scaffolds": [
+    {
+      "slot": "web",
+      "framework": "next",
+      "path": "apps/web",
+      "generator": "create-next-app@16",
+      "port": 3000
+    },
+    {
+      "slot": "backend",
+      "framework": "convex",
+      "path": "packages/backend",
+      "generator": null,
+      "port": null
+    }
+  ]
+}
+```
+
+## Fields
+
+### `version`
+
+Always `1` in the current schema. This field exists to support future schema evolution — if groot ever needs to make a breaking change to the manifest format, it will increment this value and provide a migration path.
+
+### `createdWith`
+
+The `create-groot` release that originally planted this workspace, in the form `create-groot@<semver>`. This field is written once by `groot init` and is **never updated** by subsequent `groot add` runs — it records which CLI *planted* the workspace, not which one last grew it.
+
+### `conventions.packagesNamespace`
+
+The npm scope used for shared packages in this workspace. The default is `@repo`, which matches Turborepo's official examples. All internal shared packages (`@repo/typescript-config`, `@repo/backend`, etc.) use this namespace, and internal dependencies are wired with the `workspace:*` protocol.
+
+### `scaffolds[]`
+
+An array of scaffold entries — one entry per `groot init` slot selection or `groot add` invocation. Each entry has five fields:
+
+**`slot`** — which slot this scaffold occupies. One of `web`, `mobile`, `api`, or `backend`. Slots map to workspace conventions: `web` and `mobile` land under `apps/`, `api` lands under `apps/`, and `backend` lands under `packages/`.
+
+**`framework`** — the framework identifier. One of `next`, `sveltekit`, `expo`, `elysia`, `hono`, or `convex`.
+
+**`path`** — the workspace-relative destination directory for this scaffold (e.g. `apps/web`, `packages/backend`). When you use `groot add --path apps/marketing` to grow a second app into a custom location, this field records that custom path.
+
+**`generator`** — the pinned upstream generator actually used to produce this scaffold, such as `create-next-app@16` or `sv@0.16`. This is `null` for Elysia and Convex, because groot writes those files directly rather than invoking an upstream generator.
+
+**`port`** — the deterministic dev port assigned to this scaffold at scaffold time, such as `3000` for Next.js or `3001` for Elysia/Hono. This is `null` for backend scaffolds that have no local dev server (Convex runs as a cloud deployment).
+
+## How groot uses groot.json
+
+**`groot add`** reads `groot.json` before growing a new scaffold to check slot occupancy. If the target slot is already filled and you haven't specified a `--path` that points to a fresh directory, `groot add` exits with code `2` rather than overwriting your existing scaffold. After a successful grow, the stitch stage appends the new entry to `scaffolds[]` and writes the updated manifest back to disk.
+
+**`groot doctor`** reads `groot.json` to know which per-framework health checks to run. Each framework adapter registers a set of checks — for example, the Convex adapter verifies that `convex/_generated` is in sync, and the port-collision check compares all `port` values across entries. `groot doctor` exits `0` when healthy and `5` when problems are found, with a suggested fix for each.
+
+**`groot init --dry-run --json`** emits a preview manifest to stdout in exactly this schema. Nothing is written to disk. This lets agents and CI pipelines inspect the resolved plan — which frameworks will be scaffolded, at which paths, with which generators — before committing to running the real scaffolding. Only the manifest is written to stdout; all progress output and diagnostics go to stderr.
+
+**`groot init --preset <path>`** reads an existing `groot.json` — either the file directly or a workspace directory containing one — and uses its `scaffolds[]` array as the slot selections source for a new workspace. Only the slot-to-framework shape is read from the preset; workspace name, paths, port assignments, generator pins, `conventions`, and `createdWith` always come from the current CLI version. A preset written by an older groot never pins stale generators.
+
+## You should not edit groot.json manually
+
+<Warning>
+  Manually editing `groot.json` can confuse `groot add` and `groot doctor`. Both commands trust the manifest as an accurate record of your workspace's structure. If you rename or move a scaffold directory outside of groot, update the corresponding `path` field in `groot.json` to reflect the new location, then run `groot doctor` to verify the workspace is still coherent. Editing any other field — especially `slot`, `framework`, or `generator` — without a matching change to the files on disk is likely to cause spurious health-check failures.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="How It Works" icon="diagram-project" href="/concepts/how-it-works">
+    See the full generate → stitch → verify pipeline and understand exactly when groot.json is written.
+  </Card>
+  <Card title="Scaffold Matrix" icon="table" href="/concepts/scaffold-matrix">
+    See every supported framework, its slot, default path, dev port, and whether it uses an upstream generator.
+  </Card>
+</CardGroup>

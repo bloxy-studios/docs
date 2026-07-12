@@ -1,0 +1,72 @@
+---
+title: "Flag reference for groot init, add, and doctor"
+sidebarTitle: "Flags"
+description: "Complete flag reference for all groot commands: groot init, groot add, and groot doctor, with value domains and defaults."
+---
+
+groot's three commands — `groot init`, `groot add`, and `groot doctor` — each expose a focused set of flags. Several flags (such as `--dry-run`, `--json`, and `--verbose`) are shared across commands with identical semantics. This page is the complete reference for every flag in every command: names, value domains, defaults, and what each flag actually does.
+
+## `groot init`
+
+`groot init [dir]` plants a new bun-first Turborepo monorepo. Without flags the command is fully interactive; with flags it is fully scriptable.
+
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `dir` | string | prompted | Target directory to scaffold into |
+| `--name` | string | dir basename | Workspace and root package name |
+| `--web` | `next` \| `sveltekit` \| `none` | prompted | Web app framework to scaffold in `apps/web` |
+| `--mobile` | `expo` \| `none` | prompted | Mobile app framework to scaffold in `apps/mobile` |
+| `--api` | `elysia` \| `hono` \| `none` | prompted | API framework to scaffold in `apps/api` |
+| `--backend` | `convex` \| `none` | prompted | Backend framework to scaffold in `packages/backend` |
+| `--preset` | file path or dir | — | Load slot selections from a `groot.json` — accepts a path to the file itself or to a workspace directory that contains one |
+| `--yes`, `-y` | — | off | Accept defaults for all slots not already fixed by flags; enables fully non-interactive mode when combined with slot flags or a preset |
+| `--dry-run` | — | off | Print the fully resolved plan and exit without writing any files |
+| `--json` | — | off | With `--dry-run`: emit the machine-readable plan (manifest schema) on stdout instead of human prose |
+| `--no-install` | — | install on | Skip the root `bun install` step after scaffolding |
+| `--no-git` | — | git on | Skip `git init` and the initial commit |
+| `--dir-conflict` | `error` \| `merge` \| `increment` | `error` | Policy for a non-empty target directory: `error` aborts, `merge` writes into the existing directory, `increment` appends a numeric suffix to find a free name |
+| `--keep-failed` | — | off | Keep the target directory when a generator fails, instead of cleaning it up (useful for inspecting partial output) |
+| `--verbose` | — | off | Stream raw output from upstream generators instead of showing progress spinners |
+| `--version`, `-v` | — | — | Print the installed groot version and exit |
+| `--help`, `-h` | — | — | Print command help and exit |
+
+### Defaults under `--yes`
+
+When you pass `--yes` with no slot flags, groot accepts its flagship defaults: `--web next --mobile none --api none --backend convex` — a Next.js frontend wired to a Convex backend.
+
+## `groot add`
+
+`groot add <scaffold>` grows an existing groot workspace by running a single scaffold's generate → stitch → verify pipeline. The command requires a `groot.json` in the workspace (created by `groot init`) and walks up from the current directory to find it.
+
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow — this is a positional argument, not a flag |
+| `--path` | workspace-relative dir | framework's default slot path | Custom destination directory for the new scaffold; must be absent or empty, and must not already be claimed by `groot.json` |
+| `--no-install` | — | install on | Skip the root `bun install` after the scaffold is grown |
+| `--keep-failed` | — | off | Keep the new scaffold directory if its generator fails, instead of rolling it back |
+| `--dry-run` | — | off | Print the would-be scaffold plan and the `groot.json` diff, then exit without writing anything |
+| `--json` | — | off | With `--dry-run`: emit the updated manifest as it would appear after the add, on stdout |
+| `--verbose` | — | off | Stream raw generator output instead of progress lines |
+
+## `groot doctor`
+
+`groot doctor [dir]` verifies workspace health — checking workspace globs, lockfile uniqueness, port collisions, per-scaffold invariants (such as `convex/_generated` being in sync), Bun version, and resolvable Turbo tasks.
+
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `dir` | path | walk up from cwd | Workspace root to check; if omitted, groot walks up from the current directory to find a `groot.json` |
+| `--json` | — | off | Emit structured check results on stdout: `{ healthy, workspaceRoot, checks[] }` where each check has `name`, `status`, `detail`, and an optional `fix` hint |
+
+## Shared behavior notes
+
+<Note>
+**`--json` stdout purity** — when you use `--json`, stdout carries only the machine-readable output (the manifest schema for `init`/`add`, or the structured results object for `doctor`). All diagnostics, warnings, and progress messages go to stderr. Never mix `--json` stdout with prose-parsing.
+</Note>
+
+<Note>
+**`--dry-run` is always safe** — `--dry-run` never writes any files, runs any generators, or modifies `groot.json`. You can run it in any environment — including production CI — to preview exactly what groot would do before committing to it.
+</Note>
+
+<Note>
+**`--verbose` for debugging generators** — `--verbose` streams the raw stdout/stderr from every upstream `create-*` command as it runs. Use it when a generator fails and the default progress output does not give you enough context to understand why.
+</Note>

@@ -1,0 +1,88 @@
+---
+title: "Replicate a workspace shape with presets"
+sidebarTitle: "Presets"
+description: "Use groot init --preset to read an existing groot.json and replicate its framework selections in a new workspace."
+---
+
+If your team settles on a standard workspace shape — say, Next.js paired with Convex, or SvelteKit with Hono — you can capture that shape in a `groot.json` and use it as a **preset** to stamp out new workspaces without re-answering the same prompts. Presets make it trivial to replicate a topology across services, repositories, and CI jobs.
+
+## What is a preset?
+
+A preset is an existing `groot.json` file (or a workspace directory containing one) that groot reads as the **selections source**. The slot → framework shape recorded in that manifest is replicated in the new workspace you are initializing.
+
+Key rules:
+
+- **Only the shape is borrowed.** Workspace name, destination paths, ports, generator pins, `conventions`, and `createdWith` always come from the **current CLI** — a preset written by an older version of groot never pins stale generators or carries forward outdated configuration.
+- **Explicit slot flags override the preset.** If you pass `--web sveltekit` alongside `--preset`, the preset's web selection is ignored and SvelteKit is used instead.
+- **Absent slots default to `none`.** Slots that exist in the preset but are not in the new workspace's supported set are silently skipped. Slots that are absent from the preset resolve to `none`.
+- **Multiple scaffolds per slot are partially presetted.** If the source workspace grew multiple scaffolds into one slot using `groot add --path`, only the first per slot is read from the preset. The rest are printed as a follow-up suggestion so you can replicate them with `groot add --path` afterwards.
+
+## Basic usage
+
+Point `--preset` at a `groot.json` file directly, or at the workspace directory that contains one — groot finds the manifest automatically:
+
+```sh
+# Point at a groot.json file
+groot init my-new-app --preset /path/to/flagship/groot.json
+
+# Or point at the workspace directory
+groot init my-new-app --preset ../flagship
+```
+
+Both forms produce the same result: groot reads the slot → framework shape from the manifest and uses it as the default selections for the new workspace.
+
+## Override specific slots
+
+You can use a preset as a base and override individual slots with explicit flags. The flags always win:
+
+```sh
+# Use flagship's shape but swap in SvelteKit instead of Next.js
+groot init my-new-app --preset ../flagship --web sveltekit
+```
+
+Any slot not mentioned in the flags falls back to the preset's selection. Slots absent from the preset resolve to `none`.
+
+## Fully non-interactive preset run
+
+When both a target directory and a preset are provided, no prompts appear — groot has everything it needs to proceed:
+
+```sh
+groot init team-starter --preset ../flagship --yes
+```
+
+<Tip>
+Combine `--preset` with `--no-git` and `--no-install` for fast, artifact-only scaffolding in CI jobs where you just need the file tree.
+</Tip>
+
+## Dry-run a preset
+
+Before committing to a scaffold, preview the resolved plan with `--dry-run --json`. Nothing is written, and the full `groot.json` manifest that would be created is printed to stdout:
+
+```sh
+groot init my-new-app --preset ../flagship --dry-run --json
+```
+
+Pipe to `jq` to inspect what was resolved:
+
+```sh
+groot init my-new-app --preset ../flagship --dry-run --json \
+  | jq '.scaffolds[] | "\(.slot): \(.framework)"'
+```
+
+This is the safest way to confirm that a preset + overrides combination produces the shape you expect before writing anything to disk.
+
+## Replicating a shape across repositories
+
+Commit a `groot.json` to a shared location (a `shapes/` directory, a separate config repo, or anywhere accessible) and use it as a preset in any downstream workflow:
+
+```sh
+bunx create-groot@latest init service-x \
+  --preset ./shapes/flagship.json \
+  --yes --no-git --no-install
+```
+
+Because generator pins always come from the CLI version you are running, the preset file itself never needs to be updated when upstream generators release new versions — you get the freshest generators automatically.
+
+<Warning>
+groot validates the preset manifest before using it. If the manifest contains an unknown framework ID or an unsupported manifest version, the command exits 2 with an explanation. Always validate the source workspace with `groot doctor` before committing its `groot.json` as a shared preset.
+</Warning>

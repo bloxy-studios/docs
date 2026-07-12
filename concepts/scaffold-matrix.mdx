@@ -1,0 +1,133 @@
+---
+title: "Scaffold matrix — frameworks groot can grow"
+sidebarTitle: "Scaffold Matrix"
+description: "Every framework slot groot supports, what generator it uses, and where the scaffold lands in your workspace."
+---
+
+groot organises its framework choices into four **slots** — `web`, `mobile`, `api`, and `backend`. Each slot maps to a fixed workspace location, a deterministic dev port, and an upstream generator (or a set of files groot writes directly). You pick at most one framework per slot when you run `groot init`, and you can grow additional scaffolds into custom paths later with `groot add`.
+
+## Matrix
+
+| Slot | Framework | Location | Dev Port | Generator |
+|------|-----------|----------|----------|-----------|
+| `web` | Next.js | `apps/web` | 3000 | `create-next-app@16` |
+| `web` | SvelteKit | `apps/web` | 5173 | `sv@0.16` |
+| `mobile` | Expo | `apps/mobile` | 8081 | `create-expo-app@4` |
+| `api` | Elysia | `apps/api` | 3001 | *(files written directly)* |
+| `api` | Hono | `apps/api` | 3001 | `create-hono@0.19` |
+| `backend` | Convex | `packages/backend` | — | *(files written directly)* |
+
+<Note>
+  Each slot can hold only one framework at a time by default. To grow a second web app — for example, a marketing site alongside your main product — use `groot add --path apps/marketing` to scaffold it into a custom path that doesn't conflict with an occupied slot.
+</Note>
+
+## Framework details
+
+### Next.js
+
+groot invokes `create-next-app@16` with App Router, Tailwind v4, TypeScript, Turbopack, and `--use-bun` so the generated lockfile and scripts are bun-native from the start. ESLint is included. After generation, groot patches `tsconfig.json` to extend `@repo/typescript-config/nextjs.json` — the shared TypeScript config from the Turborepo trunk — so type-checking is consistent across the workspace.
+
+Dev port `3000` is Next.js's default and is kept as-is. The `NEXT_PUBLIC_CONVEX_URL` env var is plumbed into `.env.example` when Convex is also selected.
+
+```bash
+# What groot runs
+bunx create-next-app@16 apps/web \
+  --ts --tailwind --eslint --app --src-dir --turbopack \
+  --import-alias "@/*" --use-bun --skip-install --disable-git --yes
+```
+
+### SvelteKit
+
+groot invokes the official `sv` CLI (the successor to the deprecated `create-svelte`) with the minimal template, TypeScript, and no add-ons. The generated project uses Svelte 5, SvelteKit 2, and Vite 8. groot then adds `check` and `check-types` scripts to align with Turborepo conventions, and folds the per-app `.gitignore` and `.npmrc` into the workspace root.
+
+<Tip>
+  SvelteKit's generated `prepare` script (`svelte-kit sync || echo ''`) runs during root `bun install`. This is expected and harmless — you'll see it in install output.
+</Tip>
+
+Vite's default port `5173` is kept. Note that SvelteKit config now lives inside `vite.config.ts` as plugin options — there is no separate `svelte.config.js` in the generated output.
+
+```bash
+# What groot runs
+bunx sv@0.16 create apps/web \
+  --template minimal --types ts --no-add-ons --no-install --no-dir-check
+```
+
+### Expo
+
+groot invokes `create-expo-app@4` with the `default@sdk-57` template, which gives you Expo Router, SDK 57, and TypeScript. The template tag is pinned explicitly — omitting it during the SDK 57 transition produces an SDK 54 project.
+
+Expo has first-class bun-workspace support since SDK 52, and Metro **auto-configures** for monorepos in current releases. groot does not write legacy `metro.config.js` workspace hacks (`watchFolders`, `nodeModulesPath`, etc.) — those are no longer needed. Shared packages are consumed as `"<pkg>": "*"` in the Expo app's `package.json`.
+
+The Metro dev server runs on port `8081` (Metro's default, kept as-is).
+
+```bash
+# What groot runs
+bunx create-expo-app@4 apps/mobile \
+  --template default@sdk-57 --no-install --yes
+```
+
+### Elysia
+
+No reliable upstream generator exists for Elysia: `bun create elysia` resolves to a community-owned package that diverges from Elysia's own documented setup (the `dev` script is absent). Instead, groot writes four files directly, taken straight from Elysia's official manual-setup documentation.
+
+```text
+apps/api/
+├── src/index.ts       # new Elysia().get("/", …).listen(3001)
+├── package.json       # dev · build · start · test scripts
+├── tsconfig.json      # strict: true
+└── README.md
+```
+
+The server is set to listen on port `3001` (patched from Elysia's default of `3000`). Scripts follow Elysia's documented layout:
+
+| Script | Command |
+|--------|---------|
+| `dev` | `bun --watch src/index.ts` |
+| `build` | `bun build src/index.ts --target bun --outdir ./dist` |
+| `start` | `NODE_ENV=production bun dist/index.js` |
+| `test` | `bun test` |
+
+Dependencies: `elysia@^1.4` and `@types/bun`.
+
+### Hono
+
+groot invokes `create-hono@0.19` with the `bun` template and `--pm bun`. The template is fetched from the `honojs/starter` repository, pinned to a tag that matches `create-hono`'s own major.minor — deterministic per CLI version.
+
+After generation, groot rewrites the default export in `src/index.ts` to `export default { port: 3001, fetch: app.fetch }`, changing the default port from `3000` to `3001`. `build` and `start` scripts are added to mirror the Elysia layout.
+
+```bash
+# What groot runs
+bunx create-hono@0.19 apps/api --template bun --pm bun
+```
+
+### Convex
+
+No fully-offline official generator exists for Convex — `convex codegen` requires a configured deployment in current releases. groot writes `packages/backend` directly, modelling the output on Convex's own reference monorepo.
+
+```text
+packages/backend/
+├── convex/
+│   ├── schema.ts          # starter schema (messages table)
+│   ├── messages.ts        # starter query + mutation
+│   ├── tsconfig.json
+│   └── _generated/        # vendored standard stubs — committed to git
+├── package.json           # @repo/backend · dev · setup · typecheck
+└── .env.example           # CONVEX_DEPLOYMENT / CONVEX_URL placeholders
+```
+
+The `convex/_generated` stubs are vendored and committed — the same strategy Convex's own templates use — so the package typechecks before any login. The first `bunx convex dev --until-success` run regenerates them against your live deployment.
+
+<Note>
+  groot never runs `convex dev` for you. Because deployment provisioning and Convex login are unavoidably interactive, groot prints `bunx convex dev --until-success` as your first "next step" after scaffolding and leaves it to you to run when you're ready.
+</Note>
+
+Apps that consume the backend depend on `"@repo/backend": "workspace:*"` and deep-import `@repo/backend/convex/_generated/api` directly — there is no `exports` map on the backend package, which matches the pattern Convex's reference monorepo uses.
+
+<CardGroup cols={2}>
+  <Card title="How It Works" icon="diagram-project" href="/concepts/how-it-works">
+    Understand the generate → stitch → verify pipeline and why groot orchestrates official generators instead of shipping its own templates.
+  </Card>
+  <Card title="groot.json" icon="file-code" href="/concepts/groot-json">
+    See how groot records your scaffold selections in a manifest and how that manifest drives `groot add` and `groot doctor`.
+  </Card>
+</CardGroup>

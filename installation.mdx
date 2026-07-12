@@ -1,0 +1,139 @@
+---
+title: "Install groot — bun, npx, or standalone binary"
+sidebarTitle: "Installation"
+description: "Install groot via bun create, bunx, or a checksum-verified standalone binary for Linux, macOS, and Windows."
+---
+
+groot can be invoked three ways: through `bun create` for one-shot scaffolding without any global install, through `bunx` for explicit version pinning, or as a standalone compiled binary installed on your `PATH` for repeated use across projects. All three produce identical output — pick the method that fits your workflow.
+
+## Prerequisites
+
+<Note>
+  All three methods require **Bun ≥ 1.2** to be available on the machine where the scaffolded workspace will be developed. The `create-groot` npm package also requires Bun at invocation time — groot is a Bun-native script and will not run under plain `node`. Install Bun from [bun.sh](https://bun.sh).
+</Note>
+
+<Warning>
+  groot's bin target is Bun. If you attempt to run the npm package entry point with plain `node`, groot will print a clear error message and exit immediately — no partial workspace will be written to disk. Use `bun`, `bunx`, or the standalone binary instead.
+</Warning>
+
+---
+
+## Method 1: bun create (recommended)
+
+```sh
+bun create groot my-app
+```
+
+This is the recommended way to use groot for most projects. Bun resolves `groot` to the `create-groot` package on npm, downloads the latest version, and routes the command directly to `groot init`. No global install, no version pinning required — you always get the latest release.
+
+This form opens the interactive prompt session by default. Pass slot flags to skip individual prompts:
+
+```sh
+bun create groot my-app --web next --api hono
+```
+
+Pass `--yes` alongside all four slot flags for a completely non-interactive run:
+
+```sh
+bun create groot my-app --web next --mobile none --api hono --backend convex --yes
+```
+
+---
+
+## Method 2: bunx (explicit version pinning)
+
+```sh
+# always the latest published version
+bunx create-groot@latest init my-app
+
+# pin to a specific version
+bunx create-groot@0.5.0 init my-app
+```
+
+Use `bunx create-groot` when you need reproducible scaffolding — for example in CI pipelines or team scripts where you want to lock the groot version independently of whatever Bun resolves at the time. The `init` subcommand is explicit here because `bunx` does not perform the bare-destination routing that `bun create` does.
+
+All `groot init` flags are available:
+
+```sh
+bunx create-groot@latest init my-app \
+  --web next --mobile none --api hono --backend convex --yes
+```
+
+Add `--dry-run --json` to print the resolved scaffold plan as structured JSON without writing anything to disk — useful for agent-driven workflows:
+
+```sh
+bunx create-groot@latest init my-app \
+  --web next --api hono --dry-run --json
+```
+
+---
+
+## Method 3: Standalone binary
+
+The compiled `groot` binary embeds its own JavaScript runtime, so you do not need Bun installed to run the CLI itself. Install it once and use `groot init`, `groot add`, and `groot doctor` from anywhere on your system — including in environments where Bun cannot be globally installed.
+
+<Note>
+  The standalone binary does not require Bun to run the CLI, but the workspace it creates **still requires Bun ≥ 1.2** for development. groot's preflight checks will report a missing or outdated Bun installation and suggest the fix.
+</Note>
+
+### Linux and macOS
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bloxy-studios/groot/main/install.sh | bash
+```
+
+The installer:
+- Detects your OS and architecture (supports Linux x64/arm64 and macOS x64/arm64)
+- Downloads the correct binary from the GitHub release
+- Verifies the download against the release's `SHA256SUMS.txt` before installing
+- Installs to `~/.groot/bin/groot` by default
+- Prints the one-line `PATH` export to add to your shell profile (it never edits your profile automatically)
+
+To install a specific version, set `GROOT_VERSION`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bloxy-studios/groot/main/install.sh | GROOT_VERSION=0.5.0 bash
+```
+
+To install to a custom location, set `GROOT_INSTALL`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bloxy-studios/groot/main/install.sh | GROOT_INSTALL=~/.local bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+powershell -c "irm https://raw.githubusercontent.com/bloxy-studios/groot/main/install.ps1 | iex"
+```
+
+The PowerShell installer performs the same checksum verification and PATH guidance as the bash script.
+
+### After installing
+
+Confirm the binary is on your `PATH` and working:
+
+```sh
+groot --version
+groot --help
+```
+
+Then scaffold your first workspace:
+
+```sh
+groot init my-app
+```
+
+---
+
+## Choosing a method
+
+| Method | Best for | Bun required to invoke? |
+|---|---|---|
+| `bun create groot` | One-shot scaffolding, always latest | Yes |
+| `bunx create-groot@latest` | CI pipelines, pinned versions | Yes |
+| Standalone binary | Repeated use, PATH-installed tool, environments without a global Bun | No (but workspace dev requires Bun) |
+
+<Tip>
+  Not sure which to use? Start with `bun create groot my-app`. If you find yourself scaffolding new workspaces regularly or want `groot add` and `groot doctor` available globally, install the standalone binary.
+</Tip>

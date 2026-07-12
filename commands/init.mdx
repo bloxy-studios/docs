@@ -1,0 +1,144 @@
+---
+title: "groot init — plant a new bun Turborepo workspace"
+sidebarTitle: "init"
+description: "groot init scaffolds a new bun-first Turborepo monorepo. Choose your web, mobile, API, and backend frameworks interactively or with flags."
+---
+
+`groot init` is the starting point for every groot project. It plants a fresh bun-first Turborepo workspace, wires your chosen frameworks together, and leaves you with a working `bun dev` — all in one command. Run it interactively to pick your stack from a menu, or pass flags to script it end-to-end in CI.
+
+## Synopsis
+
+```sh
+groot init [dir] [flags]
+bun create groot [dir] [flags]
+bunx create-groot@latest init [dir] [flags]
+```
+
+When you invoke `bun create groot`, bun resolves to the `create-groot` npm package and routes the bare positional argument to `init` automatically. The `bunx create-groot@latest` form always runs the newest published version.
+
+## What it does
+
+`groot init` runs a five-stage pipeline:
+
+1. **Resolve** — combines your CLI flags, an optional `--preset`, and interactive prompts to produce a concrete plan: one framework per slot (web, mobile, api, backend).
+2. **Preflight** — confirms Bun ≥ 1.2 is available, checks the target directory, and verifies any required network connectivity before writing a single byte.
+3. **Generate** — calls the official upstream generator for each selected framework (e.g. `create-next-app`, `create-expo-app`) or writes files directly when no upstream generator exists.
+4. **Stitch** — patches the workspace for coherence: updates root `package.json` workspaces globs, writes shared tsconfig paths, and wires cross-cutting integrations (e.g. a Next.js app importing from a Convex backend package).
+5. **Verify** — runs `bun install`, runs `git init` + an initial commit, and confirms the Turborepo task graph is resolvable.
+
+See [How it works](/concepts/how-it-works) for the full architecture breakdown.
+
+## Interactive mode
+
+Running `groot init` without slot flags launches the interactive prompt flow powered by [clack](https://github.com/natemoo-re/clack). Prompts run only for the slots you haven't already fixed with flags — mixing flags and prompts is fully supported.
+
+```text
+🌱 groot v0.5.0 — plant a bun-first Turborepo and grow it.
+
+◆  Web app?      › Next.js
+◆  Mobile app?   › Expo
+◆  API?          › Elysia
+◆  Backend?      › Convex
+
+◇  Planting turborepo trunk…
+◇  Growing apps/web (Next.js)…
+◇  Growing apps/mobile (Expo)…
+◇  Writing apps/api (elysia)…
+◇  Writing packages/backend (convex)…
+◇  Stitching workspace…
+◇  Installing workspace (bun install)…
+◇  Initializing git repository…
+
+🌳 I am groot — your workspace is planted.
+```
+
+Pressing **Ctrl-C** at any prompt exits immediately with code `130` and writes nothing to disk.
+
+## Flags
+
+| Flag | Values | Default | Description |
+|---|---|---|---|
+| `dir` | string | prompted | Target directory |
+| `--name` | string | dir basename | Workspace / root package name |
+| `--web` | `next` \| `sveltekit` \| `none` | prompted | Web app in `apps/web` |
+| `--mobile` | `expo` \| `none` | prompted | Mobile app in `apps/mobile` |
+| `--api` | `elysia` \| `hono` \| `none` | prompted | API in `apps/api` |
+| `--backend` | `convex` \| `none` | prompted | Backend in `packages/backend` |
+| `--preset` | path | — | Read slot selections from a `groot.json` file or workspace |
+| `--yes`, `-y` | — | off | Accept defaults for un-flagged slots |
+| `--dry-run` | — | off | Print the resolved plan; write nothing |
+| `--json` | — | off | With `--dry-run`: emit machine-readable plan on stdout |
+| `--no-install` | — | install on | Skip root `bun install` |
+| `--no-git` | — | git on | Skip `git init` + initial commit |
+| `--dir-conflict` | `error` \| `merge` \| `increment` | `error` | Policy for a non-empty target directory |
+| `--keep-failed` | — | off | Keep the target dir if a generator fails |
+| `--verbose` | — | off | Stream generator output instead of spinners |
+
+## --yes defaults
+
+<Note>
+When you pass `--yes` without explicit slot flags, groot picks `--web next --mobile none --api none --backend convex` — a Next.js web app wired to a Convex backend. This is groot's flagship pairing and the fastest way to get a production-ready fullstack workspace on the ground.
+</Note>
+
+## Using a preset
+
+`--preset <path>` points groot at an existing `groot.json` — either the file directly or a workspace directory that contains one — and uses it as the selections source for any slots you haven't fixed with flags.
+
+```sh
+# Replicate the shape of an existing workspace
+groot init my-app --preset ../flagship
+```
+
+A few rules govern preset behaviour:
+
+- Only the slot → framework shape is read. Workspace name, destination paths, ports, generator pins, and `conventions` always come from the current CLI invocation — a preset written by an older groot never pins stale generators.
+- Explicit slot flags always win over the preset. Slots absent from the preset resolve to `none`.
+- With a target directory given, a preset run is fully non-interactive.
+- The preset is validated like any manifest — unknown framework IDs or manifest versions exit with code `2`.
+- If a manifest grew multiple scaffolds into one slot via `groot add --path`, the preset uses the first one per slot and warns about the rest; replicate them afterwards with `groot add --path`.
+
+See [Presets](/guides/presets) for a deeper walkthrough.
+
+## Dry run
+
+Pass `--dry-run` to print the resolved plan without writing anything to disk. Add `--json` to emit the `groot.json` manifest to stdout instead — useful for inspecting the plan in CI or piping it into another tool.
+
+```sh
+groot init my-app --web next --backend convex --dry-run --json
+```
+
+The command exits `0` and nothing is written to disk. In `--json` mode, all diagnostics (preflight checks, warnings) go to stderr so stdout remains pure machine-readable output.
+
+## Non-interactive example
+
+```sh
+bunx create-groot@latest init my-app \
+  --web next --mobile expo --api elysia --backend convex --yes
+```
+
+Every slot is fixed by a flag, `--yes` suppresses the confirmation prompt, and there is no TTY requirement — safe to run in any CI environment.
+
+## Next steps output
+
+After a successful plant, groot prints a personalised next-steps block:
+
+```text
+Next steps:
+  1. cd my-app
+  2. bun run --cwd packages/backend setup   # Convex login + dev deployment (interactive)
+  3. bun dev
+```
+
+The Convex login step is intentionally deferred — groot never runs interactive third-party auth flows itself; it only tells you when and how to run them.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Unexpected internal error |
+| `2` | Invalid flags or arguments |
+| `3` | Preflight failure (Bun missing, directory conflict, offline) |
+| `4` | Generator failure (upstream `create-*` command failed) |
+| `5` | Stitch or verify failure |
+| `130` | Cancelled at a prompt (Ctrl-C) |

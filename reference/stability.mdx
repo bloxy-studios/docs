@@ -1,0 +1,48 @@
+---
+title: "Stability contract and semver policy for groot"
+sidebarTitle: "Stability"
+description: "What groot guarantees under semver: commands, flags, exit codes, groot.json schema, and --json output shapes. Binding at v1.0."
+---
+
+groot's stability contract defines exactly which surfaces are covered by semver. The contract is intentionally narrow: the **interface** is stable; the **output workspaces** track living upstream generators by design, and that is the product's core value. The contract is defined ahead of v1.0 and becomes binding at v1.0.0. Until then, minor releases may still adjust covered surfaces — each adjustment is changelogged. From v1.0.0 on, breaking any covered item requires a major version bump.
+
+## What IS covered by semver
+
+| Surface | Details |
+|---------|---------|
+| Commands | `groot init`, `groot add`, `groot doctor`, and the `bun create groot` bare-destination routing (e.g. `bun create groot my-app` routes to `init`) |
+| Flags | Every documented flag: name, value domain, default, and semantics — including aliases such as `-y` for `--yes` |
+| Exit codes | All 7 codes: `0` (success), `1` (internal), `2` (usage), `3` (preflight), `4` (generator), `5` (stitch/verify/doctor), `130` (cancelled) |
+| `groot.json` manifest | Schema version 1 and the published `$schema` URL — the shape of the file groot writes and reads |
+| `--json` output shapes | `init`/`add` dry-run emits the manifest schema on pure stdout; `doctor --json` emits `{ healthy, workspaceRoot, checks[] }` with each check shaped `{ name, status: pass\|warn\|fail, detail, fix? }` |
+| Non-interactive contract | No prompts without a TTY; stdout purity in `--json` mode; plain line-based progress (no spinners to garble CI logs); interactive steps (e.g. Convex login) deferred and printed as next steps, never run by groot itself |
+| Bin names | `groot` and `create-groot`; the `install.sh` and `install.ps1` installer entry points and their checksum-verification behavior |
+
+## What is NOT covered
+
+| Surface | Why |
+|---------|-----|
+| Human-readable output | Progress lines, banners, colors, emoji, and the wording of error messages and hints are presentation details. Only exit codes and documented stderr/stdout routing are contractual — never the text. Parse `--json`, not prose. |
+| Scaffolded workspace content | groot orchestrates official, live upstream generators — scaffold output changes whenever upstream ships. That is the product's core bet, not a breaking change. The stitched *invariants* (workspace globs, single lockfile, `@repo/*` links, non-conflicting ports, a valid manifest) are verified by `groot doctor`; the exact files are not contractual. |
+| Generator pins | Bumping a pinned series (e.g. `create-next-app@16` → `@17`) is a **minor** groot release, changelogged and re-verified. Pin bumps change scaffold output, not the CLI surface. |
+| Doctor check names and detail strings | The check *set* may grow or be renamed in minor releases. What is contractual is `healthy`, exit codes, and the `--json` field shape — not the specific names or detail text of individual checks. |
+| Prompt UX | Interactive flows may be reworded or reordered. What is contractual is that they never appear without a TTY and never block a fully-specified, non-interactive run. |
+
+## Change rules
+
+groot follows these rules when evolving the covered surface:
+
+- **Breaking a covered surface** → major version bump
+- **Additive changes** (new commands, new flags, new optional manifest fields, new doctor checks) → minor version bump
+- **Generator pin bumps** → minor version bump, changelogged and re-verified
+- **Deprecation path**: a covered flag or command is marked deprecated in documentation and emits a warning on use for **at least one minor release** before removal in the next major version
+
+### Manifest schema evolution
+
+<Note>
+Additive optional fields keep `version: 1` and ship as minor releases — you should write validators that ignore unknown optional fields. Any breaking shape change bumps the manifest `version` to `2`. Both `groot add` and `groot doctor` will read both `version: 1` and `version: 2` manifests for at least one full major release after a version bump, giving you a migration window. `groot init` always writes the newest version.
+</Note>
+
+## Enforcement
+
+groot's stability contract is enforced by machine: `packages/cli/src/contract.test.ts` snapshots the covered surface — the full flag set of every command, aliases, exit code values, the bun-create routing table, and the manifest schema's invariants (version constant, required fields, and the slot/framework enums cross-checked against the live scaffold matrix). Any pull request that changes the covered surface will fail CI until the snapshot is updated in the same PR, which is the reviewer's signal to evaluate the change against the rules on this page before merging.

@@ -1,47 +1,148 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get started with groot in two minutes"
+sidebarTitle: "Quickstart"
+description: "Scaffold a complete bun-first Turborepo monorepo with groot init, then add scaffolds and run health checks."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+groot scaffolds a complete bun-first Turborepo monorepo in a single interactive session. This quickstart walks you through installing the prerequisites, running `bun create groot`, extending an existing workspace with `groot add`, and verifying health with `groot doctor` — everything you need to go from nothing to a running multi-app monorepo.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
 
-    ```bash
-    npm install your-package
+  <Step title="Install Bun">
+    groot's scaffolded workspaces run entirely on [Bun](https://bun.sh) — the workspace install, task runner, and dev server all use Bun. You need **Bun ≥ 1.2** available on your machine before you start.
+
+    Check whether Bun is already installed:
+
+    ```sh
+    bun --version
+    ```
+
+    If the command is not found, or the version is below 1.2, install or upgrade Bun:
+
+    ```sh
+    # macOS, Linux, and WSL
+    curl -fsSL https://bun.sh/install | bash
+    ```
+
+    Windows users can follow the [official Bun install guide](https://bun.sh/docs/installation) for the native Windows installer or the PowerShell one-liner.
+
+    <Note>
+      Bun ≥ 1.2 introduced the stable workspace protocol and lockfile format that groot depends on. If your machine has an older version, upgrade before continuing.
+    </Note>
+  </Step>
+
+  <Step title="Scaffold your workspace with groot init">
+    Run `bun create groot` followed by your project directory name. Bun resolves `groot` to the `create-groot` package automatically — no global install needed.
+
+    ```sh
+    bun create groot my-app
+    ```
+
+    groot opens an interactive session, prompts you for each scaffold slot, then runs the generate → stitch → verify pipeline. A full session with Next.js web, no mobile, Hono API, and Convex backend looks like this:
+
+    ```text
+    🌱 groot v0.5.0 — plant a bun-first Turborepo and grow it.
+
+    ◆  Web app?      › Next.js
+    ◆  Mobile app?   › none
+    ◆  API?          › Hono
+    ◆  Backend?      › Convex
+
+    ◇  Planting turborepo trunk…
+    ◇  Growing apps/web (Next.js)…
+    ◇  Writing apps/api (hono)…
+    ◇  Writing packages/backend (convex)…
+    ◇  Stitching workspace…
+    ◇  Installing workspace (bun install)…
+    ◇  Initializing git repository…
+
+    🌳 I am groot — your workspace is planted.
+
+    Next steps:
+      cd my-app
+      bun run dev
+      bunx convex dev   # first-time Convex login
+    ```
+
+    groot only prompts for the slots you have not already fixed with flags. You can mix flags and prompts freely — for example, pass `--web next` to skip the web prompt but still be asked about mobile, API, and backend.
+
+    <Tip>
+      Running in CI or from an agent? Pass all four slot flags together with `--yes` for a completely non-interactive run — groot guarantees zero prompts and a non-zero exit if anything goes wrong:
+
+      ```sh
+      bunx create-groot@latest init my-app \
+        --web next --mobile none --api hono --backend convex --yes
+      ```
+
+      Add `--dry-run --json` to preview the resolved plan as structured JSON without writing anything to disk.
+    </Tip>
+  </Step>
+
+  <Step title="Start the workspace">
+    Enter the new directory and start all Turborepo tasks in parallel:
+
+    ```sh
+    cd my-app
+    bun run dev
+    ```
+
+    Turborepo fans out `dev` across every app. By default, your Next.js web app starts on **port 3000** and your Hono API on **port 3001** — groot assigns non-conflicting ports at stitch time so you never have to resolve them yourself.
+
+    If you selected Convex as your backend, you will need to authenticate with Convex the first time. groot never runs interactive third-party login steps — it prints the command as a next step instead:
+
+    ```sh
+    bunx convex dev   # opens a browser for first-time Convex login
+    ```
+
+    Run this in a separate terminal alongside `bun run dev`.
+  </Step>
+
+  <Step title="Grow an existing workspace with groot add">
+    Once your workspace is planted, you can grow additional scaffolds into it at any time — without re-running `init`. Use `groot add` followed by the scaffold name:
+
+    ```sh
+    # add an Expo mobile app into apps/mobile
+    groot add expo
+    ```
+
+    groot runs the same generate → stitch → verify stages as `init` for just the new scaffold. Cross-cutting wiring lands automatically: if you already have a Convex backend, the new Expo app is wired to it the same way the web app is.
+
+    You can also target a custom path if you want a second web app alongside the first:
+
+    ```sh
+    groot add sveltekit --path apps/marketing
+    ```
+
+    <Note>
+      `groot add` requires a `groot.json` manifest in the workspace root — the file that `groot init` writes. It walks up from your current directory to find it, so you can run `groot add` from inside any subdirectory of the workspace.
+    </Note>
+  </Step>
+
+  <Step title="Verify workspace health with groot doctor">
+    At any point you can run groot's health checks to confirm the workspace is in good shape — after adding a scaffold, after upgrading dependencies, or just periodically in CI:
+
+    ```sh
+    groot doctor
+    ```
+
+    groot checks workspace glob validity, lockfile hygiene, port collisions between scaffolds, per-framework invariants (such as `convex/_generated` being in sync), your installed bun version, and whether all Turborepo tasks resolve correctly. Every problem is reported with a suggested fix. The command exits 0 when everything is healthy and 5 when there are issues to address.
+
+    For structured output (useful in CI pipelines), add `--json`:
+
+    ```sh
+    groot doctor --json
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
-
-    ```bash
-    your-cli start
-    ```
-  </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## What's next?
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Commands reference" icon="terminal" href="/commands/init">
+    Every flag for `groot init`, `groot add`, and `groot doctor` — including preset support, exit codes, and the `--dry-run --json` output contract.
+  </Card>
+  <Card title="Core concepts" icon="lightbulb" href="/concepts/how-it-works">
+    How the generate → stitch → verify pipeline works, the `groot.json` manifest schema, occupancy rules, and the non-interactive contract for CI and agents.
+  </Card>
+</CardGroup>

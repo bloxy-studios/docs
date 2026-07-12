@@ -1,0 +1,65 @@
+---
+title: "groot: One-command Turborepo scaffolding for bun"
+sidebarTitle: "Introduction"
+description: "groot orchestrates official framework generators and stitches them into a bun workspace — web, mobile, API, and backend from a single command."
+---
+
+groot is a scaffolding CLI that plants a [Turborepo](https://turborepo.com) monorepo and grows it with the apps you choose — a web frontend, a mobile app, an API server, and a backend — all wired together in one command. Instead of shipping frozen templates that drift behind upstream frameworks, groot **orchestrates each framework's official generator** and then stitches the results into one coherent bun workspace: shared config packages, workspace-protocol dependencies, non-conflicting dev ports, a clean root `turbo.json`, and a single lockfile.
+
+## What problem does groot solve?
+
+Starting a multi-app monorepo from scratch means either copy-pasting stale templates, manually wiring together separate `create-*` outputs, or narrowing your choices to whatever a fixed starter ships. groot eliminates that friction. You pick the frameworks you actually want, groot runs their official generators with the right flags, and you get a properly stitched workspace — ports, package names, shared TypeScript config, merged `.gitignore`, and all — ready to `bun run dev`.
+
+## The four scaffold slots
+
+Every groot workspace is organized around four slots. Each slot maps to a well-known location in the monorepo and can be filled independently — pick just the ones your project needs, or fill all four at once.
+
+| Slot | Options | Location |
+|---|---|---|
+| 🌐 **Web** | Next.js · SvelteKit | `apps/web` |
+| 📱 **Mobile** | Expo | `apps/mobile` |
+| ⚡ **API** | Elysia · Hono | `apps/api` |
+| 🗄️ **Backend** | Convex | `packages/backend` |
+
+You can populate slots at init time with `groot init`, or grow them into an existing workspace later with `groot add`. Every slot you skip is simply absent from the workspace — groot never writes placeholder directories.
+
+## Official generators, not frozen templates
+
+The key difference between groot and a template-based scaffolder is that **groot never vendors its own copies of framework boilerplate**. When you select Next.js, groot runs `create-next-app` with pinned, non-interactive flags — the same generator the Next.js team ships and maintains. The same applies to SvelteKit (`sv create`), Expo (`create-expo-app`), Hono (`create-hono`), and the rest. This means your scaffolded apps track upstream framework defaults rather than whatever was frozen in a template months ago.
+
+After generation, groot's stitch stage patches each output into monorepo shape: workspace globs, `@repo/*` package names, shared config packages, deterministic port assignments, and a merged root lockfile. The result is a workspace that looks like it was built by a team that knew what they were doing on day one.
+
+## The three commands
+
+<CardGroup cols={2}>
+  <Card title="groot init" icon="seedling" href="/commands/init">
+    Plant a new bun-first Turborepo workspace. Interactive by default — prompts you for each slot — or fully flag-driven for CI and agents. Runs the resolve → preflight → generate → stitch → verify pipeline and writes a `groot.json` manifest to the workspace root.
+  </Card>
+  <Card title="groot add" icon="plus" href="/commands/add">
+    Grow a scaffold into an existing groot workspace. Runs the same generate → stitch → verify stages as `init` for just the new scaffold. Cross-cutting wiring (e.g. connecting a new Convex backend to existing frontends) lands automatically. Supports targeted rollback if a generator fails.
+  </Card>
+  <Card title="groot doctor" icon="stethoscope" href="/commands/doctor">
+    Run health checks against any groot workspace at any time. Verifies workspace globs, lockfile hygiene, port collisions, per-framework invariants (e.g. `convex/_generated` in sync), bun version, and turbo task resolution. Each problem comes with a suggested fix.
+  </Card>
+  <Card title="How it works" icon="book" href="/concepts/how-it-works">
+    A deeper look at the generate → stitch → verify pipeline, the `groot.json` manifest schema, occupancy rules, preset support, and the non-interactive contract for CI and agents.
+  </Card>
+</CardGroup>
+
+## Bun requirement
+
+groot's workspace toolchain is Bun end to end. The scaffolded workspace uses `bun install`, `bun run`, and Turborepo tasks — no npm or yarn. **Bun ≥ 1.2 is required** on any machine where you develop the generated workspace.
+
+The `create-groot` npm package also requires Bun at invocation time (it is a Bun-native script). If you run it with plain `node`, you will see a clear error message and the process will exit — nothing partial will be written.
+
+The standalone `groot` binary (installed via the curl script) embeds its own runtime, so you do not need Bun to run the CLI itself. However, the workspace it creates still requires Bun ≥ 1.2.
+
+<Note>
+  Install Bun from [bun.sh](https://bun.sh). Bun ≥ 1.2 introduced the stable workspace protocol and lockfile format that groot depends on — older versions are not supported.
+</Note>
+
+## Ready to plant your first workspace?
+
+<Card title="Quickstart — scaffold in two minutes" icon="rocket" href="/quickstart">
+  Run `bun create groot my-app`, answer a few prompts, and have a running Turborepo monorepo in under two minutes.
+</Card>

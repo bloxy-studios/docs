@@ -1,0 +1,64 @@
+---
+title: "Exit codes for groot commands"
+sidebarTitle: "Exit Codes"
+description: "All exit codes returned by groot init, groot add, and groot doctor — covered by semver from v1.0."
+---
+
+groot exits with well-defined codes so you can handle each failure category precisely in scripts and CI pipelines. Rather than treating any non-zero exit as a generic failure, you can branch on the specific code and surface a meaningful message or recovery action. These codes are part of groot's public stability contract and are covered by semver — they become binding at v1.0.0 and changing any code value constitutes a breaking change.
+
+## Exit code table
+
+| Code | Name | When it occurs |
+|------|------|----------------|
+| `0` | Success | The command completed successfully |
+| `1` | Internal error | An unexpected error that is likely a bug in groot itself — please [open an issue](https://github.com/bloxy-studios/groot/issues) with the full output |
+| `2` | Usage error | Invalid flags, bad argument values, or a slot occupancy violation (e.g. the target slot is already filled in `groot add`) |
+| `3` | Preflight failure | A precondition was not met before any files were written: Bun is not installed, the target directory is non-empty under the `error` conflict policy, or the network is offline when a generator requires it |
+| `4` | Generator failure | An upstream `create-*` command exited non-zero; re-run with `--verbose` to see the full generator output |
+| `5` | Stitch/verify failure | Workspace stitching failed, post-scaffold verification checks failed, or `groot doctor` found one or more problems in an existing workspace |
+| `130` | Cancelled | You pressed Ctrl-C at an interactive prompt; no files were written |
+
+## Per-command applicability
+
+Not every command can produce every code. Here is which codes each command can emit:
+
+- **`groot init`** — all codes: `0`, `1`, `2`, `3`, `4`, `5`, `130`
+- **`groot add`** — codes `0`, `1`, `2`, `4`, `5`, `130`
+- **`groot doctor`** — codes `0`, `1`, `5`
+
+`groot doctor` never emits `2` (it takes no slot arguments that could be invalid), `3` (no generators are run), `4` (no generators are run), or `130` (it is not interactive).
+
+## Handling exit codes in scripts
+
+You can capture groot's exit code and handle each case explicitly. The example below scaffolds a full workspace non-interactively and branches on the result:
+
+```sh
+groot init my-app --web next --backend convex --yes
+status=$?
+
+case $status in
+  0) echo "Workspace scaffolded successfully" ;;
+  2) echo "Invalid arguments — check your flags" ;;
+  3) echo "Preflight failed — is Bun installed?" ;;
+  4) echo "A generator failed — try --verbose for details" ;;
+  5) echo "Stitch/verify failed — run groot doctor for details" ;;
+  130) echo "Cancelled" ;;
+  *) echo "Unexpected error (code $status)" ;;
+esac
+```
+
+You can apply the same pattern to `groot add` and `groot doctor`:
+
+```sh
+# Verify workspace health in CI; fail the job if problems are found
+groot doctor --json > doctor-report.json
+if [ $? -eq 5 ]; then
+  echo "Workspace health check failed — see doctor-report.json"
+  cat doctor-report.json
+  exit 1
+fi
+```
+
+<Tip>
+Exit code `5` from `groot doctor` means one or more checks found problems. Run `groot doctor --json` and inspect the `checks` array in the output — each entry includes a `status` (`pass`, `warn`, or `fail`), a human-readable `detail` string, and an optional `fix` field with a suggested remediation command or action.
+</Tip>

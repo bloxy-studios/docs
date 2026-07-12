@@ -1,0 +1,88 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "groot",
+  "projectDescription": "A bun-first CLI that scaffolds a Turborepo monorepo by orchestrating official framework generators — wiring together a web app, mobile app, API, and backend in one command.",
+  "theme": "palm",
+  "primaryColor": "#2d9e5f",
+  "lightColor": "#f0faf4",
+  "darkColor": "#1a3d2b",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/how-it-works",
+              "concepts/scaffold-matrix",
+              "concepts/groot-json"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "commands/init",
+              "commands/add",
+              "commands/doctor"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/ci-agents",
+              "guides/presets",
+              "guides/frameworks"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/flags",
+              "reference/exit-codes",
+              "reference/stability"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "One-command Turborepo monorepo scaffolding with bun",
+    "Interactive prompts or fully flag-driven non-interactive mode",
+    "Official framework generators (Next.js, SvelteKit, Expo, Hono, Convex)",
+    "Automatic workspace stitching: shared configs, ports, lockfile, package names",
+    "groot add: grow an existing workspace with additional scaffolds",
+    "groot doctor: health checks with actionable fix suggestions",
+    "Preset support: replicate a workspace shape from groot.json",
+    "Machine-readable --dry-run --json output for CI and agents",
+    "Standalone binary installers (Linux/macOS/Windows) — no Bun required to run",
+    "Exit codes and --json contracts covered by semver"
+  ],
+  "publicApiSurface": [
+    "groot init [dir] — plant a new bun-first Turborepo workspace",
+    "groot add <scaffold> — grow an existing workspace with a new scaffold",
+    "groot doctor [dir] — run health checks with suggested fixes",
+    "bun create groot <dir> — bun create shorthand routed to init",
+    "bunx create-groot@latest init <dir> — explicit npm invocation",
+    "--web next|sveltekit|none",
+    "--mobile expo|none",
+    "--api elysia|hono|none",
+    "--backend convex|none",
+    "--preset <path> — replicate workspace shape from groot.json",
+    "--yes / -y — non-interactive mode with defaults",
+    "--dry-run --json — machine-readable plan output",
+    "--no-install, --no-git, --dir-conflict, --keep-failed, --verbose",
+    "groot.json manifest schema (version 1)",
+    "doctor --json: { healthy, workspaceRoot, checks[] }",
+    "Exit codes: 0 success, 1 internal, 2 usage, 3 preflight, 4 generator, 5 stitch/verify, 130 cancelled"
+  ]
+}

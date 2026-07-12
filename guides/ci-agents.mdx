@@ -1,0 +1,150 @@
+---
+title: "Use groot in CI pipelines and AI agents"
+sidebarTitle: "CI & Agents"
+description: "Run groot non-interactively in GitHub Actions, CI pipelines, and AI agent scripts using flags, --yes, and --dry-run --json."
+---
+
+groot treats scriptability as a first-class feature. Every command has a fully non-interactive mode, machine-readable output, and specified exit codes — so you can use groot confidently in GitHub Actions workflows, scripted environments, and AI agent loops without worrying about prompts hanging your job.
+
+## The non-interactive contract
+
+Before writing any pipeline or agent script, it helps to understand the four guarantees groot provides:
+
+1. **No hidden prompts.** Any run where every slot is fixed by flags (or `--preset`) and `--yes` is present completes with zero prompts, or exits non-zero — it never hangs waiting for input. Without a TTY, groot refuses to prompt (exit 2, with a hint) rather than block your job.
+2. **Stable machine output.** `--dry-run --json` is stable, versioned output (the `groot.json` manifest schema) safe for agents to parse. `groot doctor --json` emits structured check results the same way. Diagnostics always go to stderr so they never contaminate the JSON on stdout.
+3. **Plain progress.** Output is line-based everywhere — groot has no spinners to garble CI logs. Add `--verbose` to also stream full generator output into the log.
+4. **Deferred interactivity.** Anything interactive that cannot be avoided (for example, the Convex first-time login) is **never run by groot** — it is printed as a next step instead.
+
+groot also exports `CI=1` to every generator it spawns, so upstream `create-*` tools stay non-interactive too.
+
+## GitHub Actions example
+
+The workflow below installs Bun, scaffolds a workspace non-interactively, then verifies the result installs cleanly.
+
+```yaml
+name: Scaffold test
+on: [push]
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Scaffold workspace
+        run: |
+          bunx create-groot@latest init test-app \
+            --web next --api hono --backend convex \
+            --yes --no-git
+      - name: Verify workspace installs
+        run: cd test-app && bun install --frozen-lockfile
+```
+
+<Note>
+Use `--no-git` to keep the scaffold out of git inside an existing checkout. Add `--no-install` too if you only need the file tree and want to defer the install step. Generators download from the npm registry at scaffold time, so the job needs outbound registry access.
+</Note>
+
+The exit codes are groot's contract with your pipeline:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Unexpected internal error |
+| `2` | Invalid flags or arguments |
+| `3` | Preflight failure (Bun missing, directory conflict, offline) |
+| `4` | Generator failure (upstream `create-*` command failed) |
+| `5` | Stitch or verify failure |
+| `130` | Cancelled at a prompt |
+
+## Dry run in CI (preview before writing)
+
+`--dry-run --json` lets you see exactly what groot would do without writing any files. It exits 0 and emits the resolved `groot.json` manifest to stdout:
+
+```sh
+bunx create-groot@latest init my-app \
+  --web next --backend convex \
+  --dry-run --json
+```
+
+Pipe to `jq` to inspect specific fields:
+
+```sh
+bunx create-groot@latest init my-app \
+  --web next --backend convex \
+  --dry-run --json | jq '.scaffolds[].framework'
+```
+
+Because the output is the exact manifest that would be written as `groot.json`, you can diff it, store it as an artifact, or feed it into subsequent pipeline steps.
+
+## AI agent usage
+
+Agents can follow a three-step pattern: preview the plan, scaffold for real once the plan looks right, then verify workspace health.
+
+```sh
+# 1. Preview the plan — exits 0, writes nothing, emits the manifest to stdout
+groot init my-app --web next --backend convex --dry-run --json
+
+# 2. Scaffold for real
+groot init my-app --web next --backend convex --yes
+
+# 3. Verify health
+groot doctor my-app --json
+```
+
+<Steps>
+  <Step title="Preview with --dry-run --json">
+    Run groot with `--dry-run --json` to get the full `groot.json` manifest without touching the filesystem. Parse it to confirm the slot → framework shape matches expectations before committing to the scaffold.
+  </Step>
+  <Step title="Scaffold non-interactively">
+    Run groot with every slot fixed by flags and `--yes` present. Because the non-interactive contract guarantees zero prompts in this state, the command either completes successfully or exits non-zero — it will never block.
+  </Step>
+  <Step title="Gate on groot doctor">
+    Run `groot doctor --json` after scaffolding. It exits `0` when the workspace is healthy (warnings are allowed) and `5` when hard problems are found. Each result entry is `{ name, status: "pass" | "warn" | "fail", detail, fix? }`, making it easy to surface actionable output from your agent.
+  </Step>
+</Steps>
+
+You can also gate a `groot add` operation on its plan the same way:
+
+```sh
+# Inspect the plan first — exit 2 means occupancy or path violation
+groot add hono --path apps/gateway --dry-run --json > plan.json
+
+# Then apply it for real
+groot add hono --path apps/gateway
+```
+
+Port-collision warnings arrive on stderr and never contaminate the JSON output.
+
+## groot add in scripts
+
+Use `groot add` to grow an existing workspace non-interactively from a script:
+
+```sh
+# Add Expo to an existing workspace — skip the install step
+groot add expo --no-install
+```
+
+Because `groot add` runs the same stitch stage as `groot init`, all cross-cutting wiring lands automatically: adding Convex to a workspace that already has Next.js will link the frontend to the backend in the same pass.
+
+## The --dir-conflict flag
+
+By default, groot refuses to scaffold into a non-empty directory. Use `--dir-conflict` to change that behavior:
+
+| Policy | Behavior |
+|--------|----------|
+| `error` (default) | Exits 2 if the target directory is not empty |
+| `merge` | Writes into the existing directory, merging files |
+| `increment` | Appends a numeric suffix to avoid collision (e.g. `my-app-1`) |
+
+The `increment` policy is particularly useful in CI jobs that run repeatedly against the same base path without cleanup between runs.
+
+## Using groot doctor as a health gate
+
+`groot doctor` exits `0` (healthy — warnings allowed) or `5` (problems found, each with a suggested fix), so it integrates directly as a CI gate:
+
+```yaml
+- name: Workspace health gate
+  run: bunx create-groot@latest doctor --json > doctor.json
+```
+
+Parse `healthy`, or surface individual checks. Warnings (like a pending Convex first login) do not fail the gate; hard problems (nested lockfiles, port collisions, missing packages) do.

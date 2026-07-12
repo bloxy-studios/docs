@@ -1,0 +1,118 @@
+---
+title: "groot add — grow a scaffold into an existing workspace"
+sidebarTitle: "add"
+description: "groot add grows an existing groot workspace with a new scaffold — web, mobile, API, or backend — without re-planting the Turborepo trunk."
+---
+
+`groot add` extends an existing groot workspace with one more scaffold. It runs the same generate → stitch → verify pipeline as `groot init` for just the new scaffold — the Turborepo trunk is never re-planted, and your existing apps are never touched. Cross-cutting wiring lands automatically: stitch is idempotent over the whole workspace, so adding Convex next to an existing Next.js app wires them together in the same pass.
+
+## Synopsis
+
+```sh
+groot add <scaffold> [flags]
+```
+
+`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `elysia`, `hono`, `convex`.
+
+`groot add` walks up from the current directory to find the workspace root (identified by `groot.json`). You do not need to `cd` to the workspace root before running it.
+
+## What it does
+
+<Steps>
+  <Step title="Load manifest">
+    groot walks up from the current directory to find a `groot.json`. This is the workspace's memory — it records which scaffolds are already present and where they live.
+  </Step>
+  <Step title="Resolve scaffold">
+    groot checks occupancy rules, resolves the destination path (default or `--path`), and emits a port-collision warning if the new scaffold shares a dev port with an existing one.
+  </Step>
+  <Step title="Generate">
+    The upstream generator for the new framework runs (or groot writes files directly). Only the new scaffold's directory is written.
+  </Step>
+  <Step title="Stitch">
+    The workspace is re-stitched over the full set of scaffolds — new and existing. Cross-cutting wiring (e.g. a frontend importing `@repo/backend`) lands here. `groot.json` is updated with the new scaffold as the final entry.
+  </Step>
+  <Step title="Verify">
+    `bun install` runs at the workspace root, and the Turborepo task graph is confirmed to be resolvable.
+  </Step>
+</Steps>
+
+## Examples
+
+```sh
+# Add an Expo mobile app to an existing workspace
+groot add expo
+
+# Add a Hono API
+groot add hono
+
+# Add a second web app at a custom path (outside the default web slot)
+groot add sveltekit --path apps/marketing
+```
+
+## Flags
+
+| Flag | Values | Default | Description |
+|---|---|---|---|
+| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow |
+| `--path` | workspace-relative path | framework's slot path | Custom destination directory |
+| `--no-install` | — | install on | Skip root `bun install` after growing |
+| `--keep-failed` | — | off | Keep the new scaffold dir on generator failure |
+| `--dry-run` | — | off | Print what would be scaffolded and the `groot.json` change |
+| `--json` | — | off | With `--dry-run`: emit the updated manifest on stdout |
+| `--verbose` | — | off | Stream generator output |
+
+## Occupancy rules
+
+<Note>
+A slot can only hold one framework by default. Running `groot add next` in a workspace that already has a Next.js app in the `web` slot will exit with code `2`. To add a *second* web app, pass `--path apps/marketing` to place it in a fresh directory.
+
+The backend slot is single-occupancy even with `--path` — the `@repo/backend` package name is fixed by workspace conventions, so `--path` is not an escape hatch there.
+</Note>
+
+Path equality with any existing scaffold is always refused, regardless of slot. Relative `--path` values resolve against the workspace root (found via `groot.json` walk-up), not the current working directory.
+
+## Port collisions
+
+<Warning>
+Adding Hono next to an existing Elysia API (both default to port 3001) results in a warning, not an error. Your workspace is still grown successfully. Run `groot doctor` to see the collision listed persistently until you resolve it by manually changing the dev port in one app's `package.json` start script.
+</Warning>
+
+## Dry run
+
+Pass `--dry-run` to preview the scaffold that would be added and the resulting `groot.json` diff — nothing is written to disk.
+
+```sh
+groot add convex --dry-run
+```
+
+Add `--json` to emit the full updated `groot.json` manifest to stdout (with diagnostics on stderr):
+
+```sh
+groot add convex --dry-run --json
+```
+
+The emitted manifest is the same versioned schema that `groot init --dry-run --json` produces, with the new scaffold appended as the final entry.
+
+## Targeted rollback
+
+If the generator fails, groot removes only the new scaffold's directory and exits with code `4`. The rest of your workspace — existing apps, `groot.json`, `package.json`, lockfile — is never modified.
+
+Pass `--keep-failed` to leave the partially-generated directory in place for inspection instead of removing it.
+
+Stitch and verify failures leave the workspace tree in place so you can diagnose the problem. Run `groot doctor` after resolving the issue to confirm the workspace is healthy.
+
+## Git behaviour
+
+`groot add` never runs `git init`. Your workspace keeps whatever git state it has, including none. The new scaffold's files are left unstaged for you to review and commit.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Unexpected internal error |
+| `2` | Invalid flags or arguments (including occupancy violations) |
+| `3` | Preflight failure (Bun missing, directory conflict, offline) |
+| `4` | Generator failure (upstream `create-*` command failed) |
+| `5` | Stitch or verify failure |
+| `130` | Cancelled at a prompt (Ctrl-C) |

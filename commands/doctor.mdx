@@ -1,0 +1,127 @@
+---
+title: "groot doctor — health checks for your workspace"
+sidebarTitle: "doctor"
+description: "groot doctor runs health checks on a groot workspace and suggests fixes — ports, lockfiles, manifests, and per-framework invariants."
+---
+
+`groot doctor` audits a groot workspace and tells you exactly what is healthy, what needs attention, and how to fix it. Every check comes with a suggested fix when it fails, so you never have to guess what went wrong. Run it after scaffolding, after updating dependencies, or in CI to catch workspace drift before it reaches production.
+
+## Synopsis
+
+```sh
+groot doctor [dir] [flags]
+```
+
+`groot doctor` walks up from the current directory to find the workspace root when `dir` is omitted. You can also pass an explicit path to check a workspace that isn't an ancestor of your shell's working directory.
+
+## What it checks
+
+`groot doctor` runs the following checks against your workspace:
+
+<CardGroup cols={2}>
+  <Card title="Workspace globs" icon="folder-open">
+    Verifies that the `workspaces` globs in the root `package.json` are valid and match all scaffold paths recorded in `groot.json`.
+  </Card>
+  <Card title="Single lockfile" icon="lock">
+    Ensures there is no nested `bun.lock`, `package-lock.json`, or `yarn.lock` inside any scaffold directory — groot workspaces are single-lockfile by convention.
+  </Card>
+  <Card title="Port collisions" icon="network-wired">
+    Detects scaffolds whose dev servers share the same port number. Both Elysia and Hono default to port 3001; this check catches that and similar pairings.
+  </Card>
+  <Card title="groot.json validity" icon="file-code">
+    Validates `groot.json` against the manifest schema and confirms it is consistent with what actually exists on disk — no phantom or missing scaffold directories.
+  </Card>
+  <Card title="Bun version" icon="bolt">
+    Confirms the installed Bun meets the ≥ 1.2 requirement groot workspaces depend on.
+  </Card>
+  <Card title="Turbo tasks" icon="circle-play">
+    Confirms all tasks referenced in `turbo.json` resolve correctly against the workspace packages — catches missing `pipeline` entries after a manual scaffold removal.
+  </Card>
+  <Card title="Per-framework invariants" icon="microscope">
+    Each scaffold adapter runs its own checks. For example, the Convex adapter verifies that the `_generated` directory exists and is in sync with the Convex schema.
+  </Card>
+</CardGroup>
+
+## Output
+
+### Healthy workspace
+
+```text
+✔  workspace globs valid
+✔  single lockfile
+✔  no port collisions
+✔  groot.json valid
+✔  bun ≥ 1.2
+✔  turbo tasks resolvable
+
+🌳 Healthy — every check passed.
+```
+
+### Workspace with problems
+
+```text
+✔  workspace globs valid
+✔  single lockfile
+✗  port collision: apps/api and apps/hono both use port 3001
+   fix: Change the dev port in one app's package.json start script
+✔  groot.json valid
+✔  bun ≥ 1.2
+✔  turbo tasks resolvable
+
+✗ 1 problem found.
+```
+
+When warnings are present (but no hard failures), the summary reads `🌱 Healthy with N warning(s)` and the exit code is still `0`.
+
+## Flags
+
+| Flag | Values | Default | Description |
+|---|---|---|---|
+| `dir` | path | walk up from cwd | Workspace root to check |
+| `--json` | — | off | Emit structured results on stdout |
+
+## --json output
+
+Pass `--json` to emit a machine-readable result object on stdout. All human-readable progress output moves to stderr so stdout stays clean for piping or parsing.
+
+```json
+{
+  "healthy": false,
+  "workspaceRoot": "/home/user/my-app",
+  "checks": [
+    {
+      "name": "port-collision",
+      "status": "fail",
+      "detail": "apps/api and apps/hono both use port 3001",
+      "fix": "Change the dev port in one app's package.json start script"
+    },
+    {
+      "name": "workspace-globs",
+      "status": "pass",
+      "detail": "workspace globs valid"
+    }
+  ]
+}
+```
+
+Each entry in `checks` has:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Machine-stable check identifier (e.g. `port-collision`, `single-lockfile`) |
+| `status` | `"pass"` \| `"warn"` \| `"fail"` | Result of the check |
+| `detail` | string | Human-readable description of what was checked or what went wrong |
+| `fix` | string \| undefined | Suggested remediation step — present when `status` is `"warn"` or `"fail"` |
+
+The top-level `healthy` field is `true` only when every check has `status: "pass"` or `status: "warn"` — `"fail"` entries set it to `false` and drive exit code `5`.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | All checks passed (warnings are allowed) |
+| `5` | One or more checks failed |
+
+<Tip>
+Run `groot doctor` in CI after `bun install` to catch workspace drift caused by dependency updates or manually modified scaffolds. Pair it with `groot doctor --json` and a JSON assertion step to gate merges on a clean workspace.
+</Tip>
