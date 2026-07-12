@@ -1,7 +1,7 @@
 ---
-title: "Exit codes for groot commands"
+title: "groot exit codes: all CLI error codes and their meanings"
 sidebarTitle: "Exit Codes"
-description: "All exit codes returned by groot init, groot add, and groot doctor — covered by semver from v1.0."
+description: "All 7 exit codes returned by groot init, groot add, and groot doctor — with names, causes, and CI scripting examples. Covered by semver from v1.0."
 ---
 
 groot exits with well-defined codes so you can handle each failure category precisely in scripts and CI pipelines. Rather than treating any non-zero exit as a generic failure, you can branch on the specific code and surface a meaningful message or recovery action. These codes are part of groot's public stability contract and are covered by semver — they become binding at v1.0.0 and changing any code value constitutes a breaking change.

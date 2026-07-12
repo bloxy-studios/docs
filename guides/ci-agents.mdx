@@ -1,7 +1,7 @@
 ---
-title: "Use groot in CI pipelines and AI agents"
+title: "Using groot non-interactively in CI and AI agent scripts"
 sidebarTitle: "CI & Agents"
-description: "Run groot non-interactively in GitHub Actions, CI pipelines, and AI agent scripts using flags, --yes, and --dry-run --json."
+description: "Run groot non-interactively in GitHub Actions, CI pipelines, and AI agent loops using flags, --yes, --dry-run --json, and specified exit codes."
 ---
 
 groot treats scriptability as a first-class feature. Every command has a fully non-interactive mode, machine-readable output, and specified exit codes — so you can use groot confidently in GitHub Actions workflows, scripted environments, and AI agent loops without worrying about prompts hanging your job.
@@ -88,7 +88,7 @@ groot init my-app --web next --backend convex --dry-run --json
 groot init my-app --web next --backend convex --yes
 
 # 3. Verify health
-groot doctor my-app --json
+groot doctor --json
 ```
 
 <Steps>

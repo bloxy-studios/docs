@@ -1,7 +1,7 @@
 ---
-title: "Framework-specific setup and gotchas"
+title: "Per-framework setup notes and known gotchas in groot"
 sidebarTitle: "Frameworks"
-description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Elysia, Hono, and Convex in a groot workspace."
+description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Elysia, Hono, and Convex after running groot init or groot add."
 ---
 
 After groot finishes scaffolding, each framework lands in a ready-to-run state — but a few require a manual step or behave in ways worth knowing about. This page covers the post-scaffold notes and known gotchas for every framework groot supports, so you know exactly what to expect from `groot init` onward.
@@ -178,10 +178,10 @@ After groot finishes scaffolding, each framework lands in a ready-to-run state �
 
   ```sh
   # Run this once to authenticate and provision your Convex deployment
-  bunx convex dev
+  bunx convex dev --until-success
   ```
 
-  You only need to do this once per project. After that, `bun run dev` from the workspace root handles everything.
+  The `--until-success` flag runs Convex just long enough to complete login and deployment provisioning, then exits — it does not start a persistent watch process. You only need to do this once per project. After that, `bun run dev` from the workspace root handles everything.
 
   **Vendored _generated stubs**
 

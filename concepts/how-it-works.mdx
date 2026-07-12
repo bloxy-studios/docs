@@ -1,7 +1,7 @@
 ---
-title: "How groot scaffolds your monorepo"
+title: "How groot generates and stitches a Turborepo monorepo"
 sidebarTitle: "How It Works"
-description: "Learn how groot's generate → stitch → verify pipeline turns framework generator output into a coherent bun Turborepo workspace."
+description: "Learn how groot's generate → stitch → verify pipeline turns official framework generators into a coherent, ready-to-run bun Turborepo workspace."
 ---
 
 When you run `bun create groot`, groot doesn't copy files from a set of frozen templates. Instead, it orchestrates each framework's *own* official generator, intercepts the output, and surgically patches everything into a single coherent bun workspace. The result is a monorepo that always reflects today's upstream frameworks — not a snapshot from the last time someone updated a template.
@@ -40,7 +40,7 @@ The full pipeline has five internal stages, but from the outside you can think o
     |-----------|-----------------|
     | **Workspace globs** | Adds `"workspaces": ["apps/*", "packages/*"]` and `"packageManager": "bun@<pinned>"` to the root `package.json` |
     | **Package naming** | Apps get bare names (`web`, `mobile`, `api`); shared packages get the `@repo/*` namespace (`@repo/backend`, `@repo/typescript-config`) |
-    | **TypeScript config** | Apps are rewired to extend `@repo/typescript-config` (e.g. `@repo/typescript-config/nextjs.json`) |
+    | **TypeScript config** | Next.js is rewired to extend `@repo/typescript-config/nextjs.json`; the shared `packages/typescript-config` package is kept from the Turborepo trunk for all apps to build on |
     | **Port allocation** | Deterministic, non-colliding dev ports are written into each app — web at `3000`, mobile at `8081`, API at `3001` |
     | **Lockfile hygiene** | Any per-app lockfiles left behind by generators are deleted; exactly one root `bun.lock` remains |
     | **`.gitignore`** | Per-app `.gitignore` files stay in place (native git semantics); the root `.gitignore` is topped up to cover workspace basics |
@@ -72,7 +72,7 @@ Scaffolding CLIs face a fork: ship your own templates and own the maintenance bu
 
 1. **Pinned generator majors** — flags can only break within a major. groot bumps majors deliberately.
 2. **Thin flag adapters** — each generator's invocation lives in one small module. When upstream changes a flag, only that module needs updating.
-3. **A written contract per generator** — [`scaffold-flows.md`](https://github.com/bloxy-studios/groot/blob/main/docs/scaffold-flows.md) records every verified flag, output shape, and monorepo caveat, with sources and a verification date. Drift is caught by re-verifying that document, not by archaeology.
+3. **A written contract per generator** — for each generator, every verified flag, output shape, and monorepo caveat is recorded alongside a verification date. Drift is caught by re-verifying those facts, not by archaeology.
 
 The alternative — vendored templates — means every upstream release is your maintenance burden. groot bets that orchestrating upstream generators and tracking their flags is a smaller surface to maintain than forking their output.
 

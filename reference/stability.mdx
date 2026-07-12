@@ -1,7 +1,7 @@
 ---
-title: "Stability contract and semver policy for groot"
+title: "groot semver stability contract: what is and isn't covered"
 sidebarTitle: "Stability"
-description: "What groot guarantees under semver: commands, flags, exit codes, groot.json schema, and --json output shapes. Binding at v1.0."
+description: "What groot guarantees under semver: commands, flags, exit codes, groot.json schema, and --json output shapes — plus the change rules. Binding at v1.0."
 ---
 
 groot's stability contract defines exactly which surfaces are covered by semver. The contract is intentionally narrow: the **interface** is stable; the **output workspaces** track living upstream generators by design, and that is the product's core value. The contract is defined ahead of v1.0 and becomes binding at v1.0.0. Until then, minor releases may still adjust covered surfaces — each adjustment is changelogged. From v1.0.0 on, breaking any covered item requires a major version bump.
@@ -42,7 +42,3 @@ groot follows these rules when evolving the covered surface:
 <Note>
 Additive optional fields keep `version: 1` and ship as minor releases — you should write validators that ignore unknown optional fields. Any breaking shape change bumps the manifest `version` to `2`. Both `groot add` and `groot doctor` will read both `version: 1` and `version: 2` manifests for at least one full major release after a version bump, giving you a migration window. `groot init` always writes the newest version.
 </Note>
-
-## Enforcement
-
-groot's stability contract is enforced by machine: `packages/cli/src/contract.test.ts` snapshots the covered surface — the full flag set of every command, aliases, exit code values, the bun-create routing table, and the manifest schema's invariants (version constant, required fields, and the slot/framework enums cross-checked against the live scaffold matrix). Any pull request that changes the covered surface will fail CI until the snapshot is updated in the same PR, which is the reviewer's signal to evaluate the change against the rules on this page before merging.

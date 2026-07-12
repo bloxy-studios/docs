@@ -1,5 +1,5 @@
 ---
-title: "groot doctor — health checks for your workspace"
+title: "groot doctor — run health checks on your workspace"
 sidebarTitle: "doctor"
 description: "groot doctor runs health checks on a groot workspace and suggests fixes — ports, lockfiles, manifests, and per-framework invariants."
 ---
@@ -120,6 +120,8 @@ The top-level `healthy` field is `true` only when every check has `status: "pass
 | Code | Meaning |
 |---|---|
 | `0` | All checks passed (warnings are allowed) |
+| `1` | Unexpected internal error |
+| `2` | Invalid flags or arguments |
 | `5` | One or more checks failed |
 
 <Tip>
