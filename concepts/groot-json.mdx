@@ -59,15 +59,15 @@ The npm scope used for shared packages in this workspace. The default is `@repo`
 
 An array of scaffold entries — one entry per `groot init` slot selection or `groot add` invocation. Each entry has five fields:
 
-**`slot`** — which slot this scaffold occupies. One of `web`, `mobile`, `api`, or `backend`. Slots map to workspace conventions: `web` and `mobile` land under `apps/`, `api` lands under `apps/`, and `backend` lands under `packages/`.
+**`slot`** — which slot this scaffold occupies. One of `web`, `mobile`, `desktop`, `api`, or `backend`. Slots map to workspace conventions: `web`, `mobile`, `desktop`, and `api` all land under `apps/`, and `backend` lands under `packages/`.
 
-**`framework`** — the framework identifier. One of `next`, `sveltekit`, `expo`, `elysia`, `hono`, or `convex`.
+**`framework`** — the framework identifier. One of `next`, `sveltekit`, `expo`, `tauri`, `electron`, `elysia`, `hono`, or `convex`.
 
 **`path`** — the workspace-relative destination directory for this scaffold (e.g. `apps/web`, `packages/backend`). When you use `groot add --path apps/marketing` to grow a second app into a custom location, this field records that custom path.
 
 **`generator`** — the pinned upstream generator actually used to produce this scaffold, such as `create-next-app@16` or `sv@0.16`. This is `null` for Elysia and Convex, because groot writes those files directly rather than invoking an upstream generator.
 
-**`port`** — the deterministic dev port assigned to this scaffold at scaffold time, such as `3000` for Next.js or `3001` for Elysia/Hono. This is `null` for backend scaffolds that have no local dev server (Convex runs as a cloud deployment).
+**`port`** — the deterministic dev port assigned to this scaffold at scaffold time, such as `3000` for Next.js, `3001` for Elysia/Hono, or `1420` for Tauri. This is `null` for scaffolds with no fixed local dev port — Convex (cloud deployment) and Electron (electron-vite's renderer server is self-wiring, so groot declares no port).
 
 ## How groot uses groot.json
 

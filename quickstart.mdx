@@ -45,6 +45,7 @@ groot scaffolds a complete bun-first Turborepo monorepo in a single interactive 
 
     ◆  Web app?      › Next.js
     ◆  Mobile app?   › none
+    ◆  Desktop app?  › none
     ◆  API?          › Hono
     ◆  Backend?      › Convex
 
@@ -64,14 +65,14 @@ groot scaffolds a complete bun-first Turborepo monorepo in a single interactive 
       bunx convex dev   # first-time Convex login
     ```
 
-    groot only prompts for the slots you have not already fixed with flags. You can mix flags and prompts freely — for example, pass `--web next` to skip the web prompt but still be asked about mobile, API, and backend.
+    groot only prompts for the slots you have not already fixed with flags. You can mix flags and prompts freely — for example, pass `--web next` to skip the web prompt but still be asked about mobile, desktop, API, and backend.
 
     <Tip>
-      Running in CI or from an agent? Pass all four slot flags together with `--yes` for a completely non-interactive run — groot guarantees zero prompts and a non-zero exit if anything goes wrong:
+      Running in CI or from an agent? Pass all five slot flags together with `--yes` for a completely non-interactive run — groot guarantees zero prompts and a non-zero exit if anything goes wrong:
 
       ```sh
       bunx create-groot@latest init my-app \
-        --web next --mobile none --api hono --backend convex --yes
+        --web next --mobile none --desktop none --api hono --backend convex --yes
       ```
 
       Add `--dry-run --json` to preview the resolved plan as structured JSON without writing anything to disk.
