@@ -1,7 +1,7 @@
 ---
 title: "Per-framework setup notes and known gotchas in groot"
 sidebarTitle: "Frameworks"
-description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Elysia, Hono, and Convex after running groot init or groot add."
+description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Elysia, Hono, Fastify, and Convex after running groot init or groot add."
 ---
 
 After groot finishes scaffolding, each framework lands in a ready-to-run state — but a few require a manual step or behave in ways worth knowing about. This page covers the post-scaffold notes and known gotchas for every framework groot supports, so you know exactly what to expect from `groot init` onward.
@@ -119,7 +119,7 @@ After groot finishes scaffolding, each framework lands in a ready-to-run state �
 
   **Dev server**
 
-  The Elysia server listens on port **3001**.
+  The Elysia server listens on port **3001**. Elysia shares this port with Hono and Fastify — if you run more than one of them in the same workspace, `groot doctor` will flag the collision until you change one of the ports.
 
   **Extending with plugins**
 
@@ -139,9 +139,9 @@ After groot finishes scaffolding, each framework lands in a ready-to-run state �
 
   The Hono server listens on port **3001**.
 
-  **Port collision with Elysia**
+  **Port collision with Elysia and Fastify**
 
-  Both Hono and Elysia default to port 3001. If your workspace contains both (for example, Elysia at `apps/api` and Hono at a custom `--path`), groot emits a warning during `groot add` and `groot doctor` will flag the collision persistently until you change one of the ports.
+  Hono, Elysia, and Fastify all default to port 3001. If your workspace contains more than one of them (for example, Elysia at `apps/api` and Hono at a custom `--path`), groot emits a warning during `groot add` and `groot doctor` will flag the collision persistently until you change one of the ports.
 
   Run `groot doctor` to see the warning and the suggested fix:
 
@@ -151,6 +151,57 @@ After groot finishes scaffolding, each framework lands in a ready-to-run state �
 
   <Note>
   Hono is runtime-agnostic by design. Even though groot scaffolds it with the Bun template, you can deploy the same code to Cloudflare Workers, Node.js, Deno, and other runtimes later without rewriting your route handlers.
+  </Note>
+</Accordion>
+
+<Accordion title="Fastify">
+  groot generates Fastify via `fastify-cli@8 generate` with the `--lang=ts --esm` template. The generator is fully non-interactive: no prompts, no install, no git init. It ships the ESM TypeScript template — an `@fastify/autoload` app plugin at `src/app.ts` with `src/plugins/` and `src/routes/` directories and a node:test suite.
+
+  **What gets generated**
+
+  ```
+  apps/api/
+  ├── src/
+  │   ├── app.ts             # @fastify/autoload plugin (forceESM: true)
+  │   ├── server.ts          # groot-written entry — registers app, listens on :3001
+  │   ├── plugins/           # autoloaded plugin directory
+  │   └── routes/            # autoloaded route directory
+  ├── test/                  # node:test suite
+  ├── package.json
+  ├── tsconfig.json
+  └── .gitignore             # renamed from the template's __gitignore
+  ```
+
+  **Why groot overlays `src/server.ts`**
+
+  The template normally serves the app through the Node-centric `fastify start` wrapper — a CLI that spawns node and requires the app plugin. groot instead writes its own `src/server.ts` (modelled on fastify-cli's own eject template) which registers the app plugin directly and calls `listen({ port: 3001 })`. This gives you a plain bun-runnable entry, keeps the port under `groot doctor`'s watch, and drops the fastify-cli runtime dependency for `dev` and `start`.
+
+  `@fastify/autoload` ≥ 6 detects Bun natively and loads the `.ts` plugins and routes with no compile step or environment variable — so `bun --watch src/server.ts` runs the app directly against source.
+
+  **Scripts**
+
+  groot swaps the template's npm-invoking scripts for a bun-first set:
+
+  | Script | Command |
+  |--------|---------|
+  | `dev` | `bun --watch src/server.ts` |
+  | `build` | `tsc` (emits to `dist/`, cached by Turborepo) |
+  | `start` | `bun dist/server.js` |
+  | `test` | `bun test` |
+  | `typecheck` | `tsc --noEmit` |
+
+  The rewrite is marker-gated on the template's own `dev` script, so re-running `groot doctor` or a second scaffold pass is idempotent — hand-rolled scripts are never clobbered. The template's devDependencies (ts-node, c8, concurrently) are left in place but go unused under bun.
+
+  **Dev server**
+
+  The Fastify server listens on port **3001**, written directly into `src/server.ts`. This is shared with Elysia and Hono — running more than one of them in the same workspace triggers a `groot doctor` warning until you change one of the ports.
+
+  <Warning>
+  `fastify-cli generate` shells out to `npm init -y` inside the target directory to derive the package name from the basename. That call fails with `EBADDEVENGINES` when it walks up into the bun-declared workspace root that Turborepo's `-m bun` transform writes. groot works around this by running the generator in a disposable staging directory under the OS tempdir (neutral ancestry) and then moving the result into `apps/api`. This is invisible during a normal `groot init` or `groot add fastify` — but if you run `fastify-cli generate` manually inside an existing groot workspace, expect the failure.
+  </Warning>
+
+  <Note>
+  The stitched scripts are bun-invoking on purpose. The template's own `npm run …` chains would trip the same `EBADDEVENGINES` guard at runtime whenever the workspace declares bun as its engine — swapping in bun-native scripts sidesteps that permanently.
   </Note>
 </Accordion>
 
