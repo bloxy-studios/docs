@@ -60,7 +60,7 @@ Pressing **Ctrl-C** at any prompt exits immediately with code `130` and writes n
 |---|---|---|---|
 | `dir` | string | prompted | Target directory |
 | `--name` | string | dir basename | Workspace / root package name |
-| `--web` | `next` \| `sveltekit` \| `none` | prompted | Web app in `apps/web` |
+| `--web` | `next` \| `sveltekit` \| `tanstack-start` \| `astro` \| `react-router` \| `nuxt` \| `vite` \| `none` | prompted | Web app in `apps/web` |
 | `--mobile` | `expo` \| `none` | prompted | Mobile app in `apps/mobile` |
 | `--api` | `elysia` \| `hono` \| `fastify` \| `none` | prompted | API in `apps/api` |
 | `--backend` | `convex` \| `none` | prompted | Backend in `packages/backend` |
@@ -119,6 +119,13 @@ bunx create-groot@latest init my-app \
 ```
 
 Every slot is fixed by a flag, `--yes` suppresses the confirmation prompt, and there is no TTY requirement — safe to run in any CI environment.
+
+`--web` accepts any of `next`, `sveltekit`, `tanstack-start`, `astro`, `react-router`, `nuxt`, `vite`, or `none`. For example, to plant a TanStack Start + Hono + Convex workspace:
+
+```sh
+bunx create-groot@latest init my-app \
+  --web tanstack-start --api hono --backend convex --yes
+```
 
 ## Next steps output
 
