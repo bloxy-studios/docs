@@ -12,6 +12,11 @@ groot organises its framework choices into four **slots** — `web`, `mobile`, `
 |------|-----------|----------|----------|-----------|
 | `web` | Next.js | `apps/web` | 3000 | `create-next-app@16` |
 | `web` | SvelteKit | `apps/web` | 5173 | `sv@0.16` |
+| `web` | TanStack Start | `apps/web` | 3000 | `@tanstack/cli@0.69` |
+| `web` | Astro | `apps/web` | 4321 | `create-astro@5` |
+| `web` | React Router | `apps/web` | 5173 | `create-react-router@8` |
+| `web` | Nuxt | `apps/web` | 3000 | `create-nuxt@3` |
+| `web` | Vite | `apps/web` | 5173 | `create-vite@9` |
 | `mobile` | Expo | `apps/mobile` | 8081 | `create-expo-app@4` |
 | `api` | Elysia | `apps/api` | 3001 | *(files written directly)* |
 | `api` | Hono | `apps/api` | 3001 | `create-hono@0.19` |
@@ -50,6 +55,79 @@ Vite's default port `5173` is kept. Note that SvelteKit config now lives inside 
 # What groot runs
 bunx sv@0.16 create apps/web \
   --template minimal --types ts --no-add-ons --no-install --no-dir-check
+```
+
+### TanStack Start
+
+groot invokes `@tanstack/cli@0.69` with `create` in fully non-interactive mode: React framework, `bun` as the package manager, no examples, no toolchain overlay (the workspace root owns linting), and `--no-intent` to skip the CLI's own agent skill files. The scaffold lands as a Vite-powered TanStack Start app.
+
+The template pins its dev port in the `dev` script (`vite dev --port 3000`) — the same default as Next.js. Convex is plumbed with `VITE_CONVEX_URL` because TanStack Start apps consume env vars through Vite's `import.meta.env`. Build output is `dist/` via plain `vite build`.
+
+```bash
+# What groot runs
+bunx @tanstack/cli@0.69 create apps/web \
+  --framework React --package-manager bun \
+  --no-git --no-install --no-examples --no-toolchain --no-intent --yes
+```
+
+### Astro
+
+groot invokes `create-astro@5` with the `minimal` template, `--no-ai` to skip Astro's AI agent config files, and `--skip-houston` so the mascot animation doesn't smear output in non-TTY runs. The template is fetched from the `withastro/astro` examples via giget at scaffold time.
+
+Astro's default port `4321` is the only unique web port in the matrix — nothing to rewrite and nothing to drift-check. Convex is plumbed with `PUBLIC_CONVEX_URL`, matching Astro's `import.meta.env.PUBLIC_*` client prefix. Build output is `dist/`.
+
+```bash
+# What groot runs
+bunx create-astro@5 apps/web \
+  --template minimal --no-install --no-git \
+  --no-ai --skip-houston --yes
+```
+
+<Warning>
+  Under `--yes`, `create-astro` silently redirects a **non-empty** target directory to a randomly generated project name. groot always scaffolds into a fresh destination (trunk examples are cleared; `groot add` requires an absent or empty `--path`), so the happy path always holds. If you invoke `create-astro` yourself outside of groot, make sure the target is empty.
+</Warning>
+
+### React Router
+
+groot invokes `create-react-router@8` with `bun` as the package manager, `--no-agent-skills` (v8.2 added a step that copies React Router's own agent skill files into the project — suppressed for the same reason as TanStack's `--no-intent` and Astro's `--no-ai`), and `--yes` for full non-interactivity. The default template — TypeScript + Tailwind + SSR + Dockerfile — is fetched from `remix-run/react-router-templates` at scaffold time.
+
+Port `5173` is the Vite default (shared with SvelteKit and Vite — same-slot alternatives share ports by design). Convex is plumbed with `VITE_CONVEX_URL`. Build output is `build/` (client + server bundles).
+
+```bash
+# What groot runs
+bunx create-react-router@8 apps/web \
+  --package-manager bun --no-git-init --no-install --no-agent-skills --yes
+```
+
+### Nuxt
+
+groot invokes `create-nuxt@3` with all four of the CLI's non-interactive mandatory arguments — positional directory, `--template minimal` (the starter's default, fetched from `nuxt/starter` via giget), `--packageManager bun`, and `--no-gitInit` (citty's auto-negation of `--gitInit`) — plus `--no-install` and `--no-modules` to skip the module-selection prompt.
+
+<Note>
+  Unlike the other web generators, `create-nuxt` has no `--yes` flag. Instead, non-interactive mode requires you to make an explicit choice for `dir`, `--template`, `--packageManager`, and the git-init decision — omit any of the four and the CLI exits with code `2`. groot always passes all four.
+</Note>
+
+Nuxt's default port `3000` is kept as-is (shared with Next.js and TanStack Start). Convex is plumbed with `NUXT_PUBLIC_CONVEX_URL`, matching Nuxt's `useRuntimeConfig().public.*` client prefix. Build output is `.output/` (Nitro's server bundle).
+
+The template's `postinstall: nuxt prepare` runs during the root `bun install` — this is a workspace-local script, not a dependency lifecycle script.
+
+```bash
+# What groot runs
+bunx create-nuxt@3 apps/web \
+  --template minimal --packageManager bun \
+  --no-gitInit --no-install --no-modules
+```
+
+### Vite
+
+groot invokes `create-vite@9` with the `react-ts` template — a plain TypeScript React SPA, for when a meta-framework is more than the job needs. `--no-interactive` forces non-interactive mode, and `--no-immediate` opts out of 9.x's immediate mode, which would install dependencies *and* start the dev server.
+
+The `react-ts` template defaults to Oxlint in `create-vite@9` — groot keeps it as-is because the workspace root owns linting anyway. Port `5173` is the Vite default (shared with SvelteKit and React Router). Convex is plumbed with `VITE_CONVEX_URL`. Build output is `dist/`.
+
+```bash
+# What groot runs
+bunx create-vite@9 apps/web \
+  --template react-ts --no-interactive --no-immediate
 ```
 
 ### Expo

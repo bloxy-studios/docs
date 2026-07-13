@@ -12,7 +12,7 @@ description: "groot add grows an existing groot workspace with a new scaffold �
 groot add <scaffold> [flags]
 ```
 
-`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `elysia`, `hono`, `convex`.
+`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `tanstack-start`, `astro`, `react-router`, `nuxt`, `vite`, `expo`, `elysia`, `hono`, `convex`.
 
 `groot add` walks up from the current directory to find the workspace root (identified by `groot.json`). You do not need to `cd` to the workspace root before running it.
 
@@ -47,13 +47,19 @@ groot add hono
 
 # Add a second web app at a custom path (outside the default web slot)
 groot add sveltekit --path apps/marketing
+
+# Grow any of the seven web frameworks — for example, an Astro marketing site
+groot add astro --path apps/blog
+
+# Or a plain Vite SPA alongside your main app
+groot add vite --path apps/dashboard
 ```
 
 ## Flags
 
 | Flag | Values | Default | Description |
 |---|---|---|---|
-| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow |
+| `<scaffold>` | `next` \| `sveltekit` \| `tanstack-start` \| `astro` \| `react-router` \| `nuxt` \| `vite` \| `expo` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow |
 | `--path` | workspace-relative path | framework's slot path | Custom destination directory |
 | `--no-install` | — | install on | Skip root `bun install` after growing |
 | `--keep-failed` | — | off | Keep the new scaffold dir on generator failure |

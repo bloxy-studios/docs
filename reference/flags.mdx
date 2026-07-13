@@ -14,7 +14,7 @@ groot's three commands — `groot init`, `groot add`, and `groot doctor` — eac
 |------|--------|---------|-------------|
 | `dir` | string | prompted | Target directory to scaffold into |
 | `--name` | string | dir basename | Workspace and root package name |
-| `--web` | `next` \| `sveltekit` \| `none` | prompted | Web app framework to scaffold in `apps/web` |
+| `--web` | `next` \| `sveltekit` \| `tanstack-start` \| `astro` \| `react-router` \| `nuxt` \| `vite` \| `none` | prompted | Web app framework to scaffold in `apps/web` |
 | `--mobile` | `expo` \| `none` | prompted | Mobile app framework to scaffold in `apps/mobile` |
 | `--api` | `elysia` \| `hono` \| `none` | prompted | API framework to scaffold in `apps/api` |
 | `--backend` | `convex` \| `none` | prompted | Backend framework to scaffold in `packages/backend` |
@@ -40,7 +40,7 @@ When you pass `--yes` with no slot flags, groot accepts its flagship defaults: `
 
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
-| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow — this is a positional argument, not a flag |
+| `<scaffold>` | `next` \| `sveltekit` \| `tanstack-start` \| `astro` \| `react-router` \| `nuxt` \| `vite` \| `expo` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow — this is a positional argument, not a flag |
 | `--path` | workspace-relative dir | framework's default slot path | Custom destination directory for the new scaffold; must be absent or empty, and must not already be claimed by `groot.json` |
 | `--no-install` | — | install on | Skip the root `bun install` after the scaffold is grown |
 | `--keep-failed` | — | off | Keep the new scaffold directory if its generator fails, instead of rolling it back |

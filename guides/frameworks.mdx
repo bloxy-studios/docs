@@ -1,7 +1,7 @@
 ---
 title: "Per-framework setup notes and known gotchas in groot"
 sidebarTitle: "Frameworks"
-description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Elysia, Hono, and Convex after running groot init or groot add."
+description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, TanStack Start, Astro, React Router, Nuxt, Vite, Expo, Elysia, Hono, and Convex after running groot init or groot add."
 ---
 
 After groot finishes scaffolding, each framework lands in a ready-to-run state — but a few require a manual step or behave in ways worth knowing about. This page covers the post-scaffold notes and known gotchas for every framework groot supports, so you know exactly what to expect from `groot init` onward.
@@ -59,6 +59,168 @@ After groot finishes scaffolding, each framework lands in a ready-to-run state �
   ```
 
   This gives you access to the full `sv` add-on catalog (auth, testing, Prettier, and so on) without re-scaffolding.
+</Accordion>
+
+<Accordion title="TanStack Start">
+  groot generates TanStack Start via `@tanstack/cli@0.69` in `create` mode — the React framework with Vite under the hood.
+
+  **What gets generated**
+
+  - Vite-powered TanStack Start app under `apps/web/`
+  - `vite.config.ts` with the `tanstackStart` plugin
+  - A `dev` script pinned to port 3000 (`vite dev --port 3000`)
+
+  **Suppressed generator options**
+
+  groot passes `--no-toolchain` and `--no-intent` so the scaffold lands clean:
+
+  - `--no-toolchain` skips the ESLint/Biome overlay the CLI would otherwise add. The workspace root owns linting, so per-app overlays would collide with root config.
+  - `--no-intent` skips the TanStack CLI's own agent skill files (`.tanstack/`, `SKILL.md`). groot's agent artifacts arrive with roadmap v1.3 and must not collide with per-framework agent files.
+
+  **Dev server**
+
+  Port **3000**, shared with Next.js and Nuxt. If you grow a second web scaffold that also defaults to 3000, `groot add` emits a port collision warning and `groot doctor` flags it persistently.
+
+  **Convex env plumbing**
+
+  TanStack Start reads env vars through Vite's `import.meta.env`, so groot writes `VITE_CONVEX_URL` into `.env.example` when Convex is also selected.
+
+  **Build output**
+
+  `vite build` → `dist/`. The template has no Nitro or Vinxi dependencies — build is plain Vite.
+</Accordion>
+
+<Accordion title="Astro">
+  groot generates Astro via `create-astro@5` using the `minimal` template. The template is fetched from the `withastro/astro` examples via giget at scaffold time.
+
+  **What gets generated**
+
+  - Minimal Astro app under `apps/web/`
+  - `astro.config.mjs`
+  - TypeScript-strict configuration
+
+  **Suppressed generator options**
+
+  - `--no-ai` skips Astro's AI agent config files. groot's agent artifacts arrive with roadmap v1.3, so per-framework agent files are suppressed across every web adapter (TanStack `--no-intent`, React Router `--no-agent-skills`, Astro `--no-ai`) — one unified policy.
+  - `--skip-houston` disables the mascot animation so non-TTY output stays deterministic.
+
+  **Dev server**
+
+  Port **4321** — Astro's default and the only unique web port in the matrix. No port-sharing gotchas.
+
+  **Convex env plumbing**
+
+  Astro exposes public env vars with the `PUBLIC_*` prefix (`import.meta.env.PUBLIC_*`), so groot writes `PUBLIC_CONVEX_URL` into `.env.example`. SvelteKit uses the same prefix — if you ever mix an Astro and SvelteKit web scaffold, the `.env.example` entry is deduplicated per exact line.
+
+  **Build output**
+
+  `astro build` → `dist/`.
+
+  <Warning>
+    Under `--yes`, `create-astro` silently redirects a **non-empty** target directory to a randomly generated project name (via its internal `generateProjectName()`) instead of failing loudly. groot always scaffolds into a fresh destination, so the happy path always holds — but if you run `create-astro` yourself outside of groot, make sure the target is absent or empty.
+  </Warning>
+</Accordion>
+
+<Accordion title="React Router">
+  groot generates React Router (framework mode — the Remix successor) via `create-react-router@8`. The default template is fetched from `remix-run/react-router-templates` at scaffold time: TypeScript + Tailwind + SSR (with a Dockerfile, kept as-is).
+
+  **What gets generated**
+
+  - React Router framework-mode app under `apps/web/`
+  - `react-router.config.ts` — the definitive framework-mode marker
+  - `app/` directory with routes and layouts
+  - Tailwind wired via Vite
+
+  **Suppressed generator options**
+
+  `create-react-router@8.2` added a step that copies React Router's own agent skill files (`SKILL.md` + references) into the project. groot passes `--no-agent-skills` to suppress it — the same policy applied to TanStack's `--no-intent` and Astro's `--no-ai`. groot's agent artifacts arrive with roadmap v1.3 and must not collide with per-framework agent files.
+
+  **Dev server**
+
+  Port **5173** — the Vite default, shared with SvelteKit and Vite. Multiple `5173`-defaulting web scaffolds in one workspace trigger a `groot add` collision warning and are flagged by `groot doctor` until you change one app's `package.json` dev script.
+
+  **Convex env plumbing**
+
+  `VITE_CONVEX_URL` — React Router 7+ runs on Vite and consumes env vars through `import.meta.env`.
+
+  **Build output**
+
+  `react-router build` → `build/` (client bundle + server bundle).
+</Accordion>
+
+<Accordion title="Nuxt">
+  groot generates Nuxt via `create-nuxt@3` using the `minimal` template. The template is fetched from `nuxt/starter` via giget at scaffold time. Note that the CLI package is 3.x even though Nuxt itself is v4.
+
+  **What gets generated**
+
+  - Nuxt app under `apps/web/`
+  - `nuxt.config.ts`
+  - `app/` directory (Nuxt 4 layout)
+
+  **The four mandatory non-interactive arguments**
+
+  <Warning>
+    `create-nuxt` has no `--yes` flag. In non-interactive mode, the CLI **requires** an explicit choice for all four of: the positional directory, `--template`, `--packageManager`, and a git-init decision. Omit any of the four and the CLI exits with code `2`. groot always passes all four:
+
+    ```text
+    bunx create-nuxt@3 <name> \
+      --template minimal --packageManager bun --no-gitInit \
+      --no-install --no-modules
+    ```
+
+    `--no-gitInit` is citty's auto-negation of `--gitInit` — it counts as an explicit decision. `--no-modules` skips the module-selection prompt. If you invoke `create-nuxt` yourself in a script, mirror this shape or the CLI will exit non-interactively before scaffolding anything.
+  </Warning>
+
+  **The prepare script**
+
+  The generated `package.json` includes `"postinstall": "nuxt prepare"`. This runs during the root `bun install` as a workspace-local script — you will see it in install output. This is expected and harmless.
+
+  **Dev server**
+
+  Port **3000** — shared with Next.js and TanStack Start. Multiple `3000`-defaulting scaffolds trigger a port collision warning and are flagged by `groot doctor`.
+
+  **Convex env plumbing**
+
+  `NUXT_PUBLIC_CONVEX_URL` — matches Nuxt's `useRuntimeConfig().public.*` client prefix.
+
+  **Build output**
+
+  `nuxt build` → `.output/` (Nitro's server bundle). This path is added to Turborepo's outputs so builds are cached correctly.
+</Accordion>
+
+<Accordion title="Vite">
+  groot generates a plain Vite React SPA via `create-vite@9` using the `react-ts` template. This is the "no meta-framework" web option — for when a router and SSR are more than the job needs.
+
+  **What gets generated**
+
+  - React + TypeScript SPA under `apps/web/`
+  - `vite.config.ts`
+  - Oxlint configuration (see below)
+
+  **Suppressed generator options**
+
+  - `--no-interactive` forces non-interactive mode.
+  - `--no-immediate` opts out of `create-vite@9`'s immediate mode, which would install dependencies **and** start the dev server. groot never runs generators that block waiting for input.
+
+  **Oxlint by default**
+
+  As of `create-vite@9`, React templates ship with [Oxlint](https://oxc.rs/docs/guide/usage/linter) configured. groot keeps this as-is because the workspace root owns linting anyway — the per-app Oxlint config is harmless and coexists with root ESLint/Biome if you use them.
+
+  **`_gitignore` rename**
+
+  `create-vite` ships its gitignore as `_gitignore` and renames it to `.gitignore` on copy. This is normal Vite generator behaviour, not a groot patch.
+
+  **Dev server**
+
+  Port **5173** — the Vite default, shared with SvelteKit and React Router. Same port-sharing behaviour: `groot add` warns on collision and `groot doctor` flags it persistently.
+
+  **Convex env plumbing**
+
+  `VITE_CONVEX_URL`.
+
+  **Build output**
+
+  `vite build` → `dist/`.
 </Accordion>
 
 <Accordion title="Expo">
