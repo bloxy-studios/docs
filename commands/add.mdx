@@ -45,6 +45,9 @@ groot add expo
 # Add a Hono API
 groot add hono
 
+# Add a Fastify API
+groot add fastify
+
 # Add a second web app at a custom path (outside the default web slot)
 groot add sveltekit --path apps/marketing
 
@@ -80,7 +83,7 @@ Path equality with any existing scaffold is always refused, regardless of slot. 
 ## Port collisions
 
 <Warning>
-Adding Hono next to an existing Elysia API (both default to port 3001) results in a warning, not an error. Your workspace is still grown successfully. Run `groot doctor` to see the collision listed persistently until you resolve it by manually changing the dev port in one app's `package.json` start script.
+Adding Hono, Fastify, or Elysia next to an existing API from that group (all three default to port 3001) results in a warning, not an error. Your workspace is still grown successfully. Run `groot doctor` to see the collision listed persistently until you resolve it by manually changing the dev port in one app's start script or `src/server.ts`.
 </Warning>
 
 ## Dry run

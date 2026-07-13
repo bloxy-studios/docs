@@ -20,6 +20,7 @@ groot organises its framework choices into four **slots** — `web`, `mobile`, `
 | `mobile` | Expo | `apps/mobile` | 8081 | `create-expo-app@4` |
 | `api` | Elysia | `apps/api` | 3001 | *(files written directly)* |
 | `api` | Hono | `apps/api` | 3001 | `create-hono@0.19` |
+| `api` | Fastify | `apps/api` | 3001 | `fastify-cli@8` |
 | `backend` | Convex | `packages/backend` | — | *(files written directly)* |
 
 <Note>
@@ -176,6 +177,33 @@ After generation, groot rewrites the default export in `src/index.ts` to `export
 ```bash
 # What groot runs
 bunx create-hono@0.19 apps/api --template bun --pm bun
+```
+
+### Fastify
+
+groot invokes `fastify-cli@8 generate` with `--lang=ts --esm` to pin the ESM TypeScript template. The generator ships a single bin named `fastify` (not the same as the package name) — bunx's single-bin fallback handles it. The template is fully non-interactive: no prompts, no install, no git init.
+
+<Warning>
+  `fastify-cli generate` unconditionally shells out to `npm init -y` inside the target directory to derive the package name. That call fails with `EBADDEVENGINES` when it walks up into the bun-declared workspace root that Turborepo writes. groot works around this by running the generator in a disposable staging directory under the OS tempdir, then moving the output into `apps/api`.
+</Warning>
+
+The `--lang=ts --esm` template lands an `@fastify/autoload` app plugin at `src/app.ts` alongside `src/plugins/` and `src/routes/`, plus a node:test suite. `@fastify/autoload` ≥ 6 detects Bun natively and loads `.ts` routes with no compile step, so nothing in the runtime chain requires ts-node.
+
+The template normally serves the app through the Node-centric `fastify start` wrapper. groot instead overlays `src/server.ts` — modelled on fastify-cli's own eject template — which registers the app plugin and listens on port `3001`. Scripts are then swapped for the bun set:
+
+| Script | Command |
+|--------|---------|
+| `dev` | `bun --watch src/server.ts` |
+| `build` | `tsc` (emits to `dist/`, turbo-cached) |
+| `start` | `bun dist/server.js` |
+| `test` | `bun test` |
+| `typecheck` | `tsc --noEmit` |
+
+The script rewrite is marker-gated on the template's own `dev` script, so re-runs are idempotent and hand-rolled scripts are never clobbered. Template devDependencies are left untouched.
+
+```bash
+# What groot runs (in a staged tempdir, then moved into apps/api)
+bunx fastify-cli@8 generate api --lang=ts --esm
 ```
 
 ### Convex
