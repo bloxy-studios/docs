@@ -1,23 +1,24 @@
 ---
 title: "groot: scaffold a bun-first Turborepo in one command"
 sidebarTitle: "Introduction"
-description: "groot orchestrates official framework generators and stitches them into a bun workspace — web, mobile, API, and backend from a single command."
+description: "groot orchestrates official framework generators and stitches them into a bun workspace — web, mobile, desktop, API, and backend from a single command."
 ---
 
-groot is a scaffolding CLI that plants a [Turborepo](https://turborepo.com) monorepo and grows it with the apps you choose — a web frontend, a mobile app, an API server, and a backend — all wired together in one command. Instead of shipping frozen templates that drift behind upstream frameworks, groot **orchestrates each framework's official generator** and then stitches the results into one coherent bun workspace: shared config packages, workspace-protocol dependencies, non-conflicting dev ports, a clean root `turbo.json`, and a single lockfile.
+groot is a scaffolding CLI that plants a [Turborepo](https://turborepo.com) monorepo and grows it with the apps you choose — a web frontend, a mobile app, a desktop app, an API server, and a backend — all wired together in one command. Instead of shipping frozen templates that drift behind upstream frameworks, groot **orchestrates each framework's official generator** and then stitches the results into one coherent bun workspace: shared config packages, workspace-protocol dependencies, non-conflicting dev ports, a clean root `turbo.json`, and a single lockfile.
 
 ## What problem does groot solve?
 
 Starting a multi-app monorepo from scratch means either copy-pasting stale templates, manually wiring together separate `create-*` outputs, or narrowing your choices to whatever a fixed starter ships. groot eliminates that friction. You pick the frameworks you actually want, groot runs their official generators with the right flags, and you get a properly stitched workspace — ports, package names, shared TypeScript config, merged `.gitignore`, and all — ready to `bun run dev`.
 
-## The four scaffold slots
+## The five scaffold slots
 
-Every groot workspace is organized around four slots. Each slot maps to a well-known location in the monorepo and can be filled independently — pick just the ones your project needs, or fill all four at once.
+Every groot workspace is organized around five slots. Each slot maps to a well-known location in the monorepo and can be filled independently — pick just the ones your project needs, or fill all five at once.
 
 | Slot | Options | Location |
 |---|---|---|
 | 🌐 **Web** | Next.js · SvelteKit | `apps/web` |
 | 📱 **Mobile** | Expo | `apps/mobile` |
+| 🖥️ **Desktop** | Tauri · Electron | `apps/desktop` |
 | ⚡ **API** | Elysia · Hono | `apps/api` |
 | 🗄️ **Backend** | Convex | `packages/backend` |
 
@@ -25,7 +26,7 @@ You can populate slots at init time with `groot init`, or grow them into an exis
 
 ## Official generators, not frozen templates
 
-The key difference between groot and a template-based scaffolder is that **groot never vendors its own copies of framework boilerplate**. When you select Next.js, groot runs `create-next-app` with pinned, non-interactive flags — the same generator the Next.js team ships and maintains. The same applies to SvelteKit (`sv create`), Expo (`create-expo-app`), Hono (`create-hono`), and the rest. This means your scaffolded apps track upstream framework defaults rather than whatever was frozen in a template months ago.
+The key difference between groot and a template-based scaffolder is that **groot never vendors its own copies of framework boilerplate**. When you select Next.js, groot runs `create-next-app` with pinned, non-interactive flags — the same generator the Next.js team ships and maintains. The same applies to SvelteKit (`sv create`), Expo (`create-expo-app`), Tauri (`create-tauri-app`), Electron (`@quick-start/create-electron`), Hono (`create-hono`), and the rest. This means your scaffolded apps track upstream framework defaults rather than whatever was frozen in a template months ago.
 
 After generation, groot's stitch stage patches each output into monorepo shape: workspace globs, `@repo/*` package names, shared config packages, deterministic port assignments, and a merged root lockfile. The result is a workspace that looks like it was built by a team that knew what they were doing on day one.
 

@@ -1,7 +1,7 @@
 ---
 title: "groot add — grow a scaffold into an existing workspace"
 sidebarTitle: "add"
-description: "groot add grows an existing groot workspace with a new scaffold — web, mobile, API, or backend — without re-planting the Turborepo trunk."
+description: "groot add grows an existing groot workspace with a new scaffold — web, mobile, desktop, API, or backend — without re-planting the Turborepo trunk."
 ---
 
 `groot add` extends an existing groot workspace with one more scaffold. It runs the same generate → stitch → verify pipeline as `groot init` for just the new scaffold — the Turborepo trunk is never re-planted, and your existing apps are never touched. Cross-cutting wiring lands automatically: stitch is idempotent over the whole workspace, so adding Convex next to an existing Next.js app wires them together in the same pass.
@@ -12,7 +12,7 @@ description: "groot add grows an existing groot workspace with a new scaffold �
 groot add <scaffold> [flags]
 ```
 
-`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `elysia`, `hono`, `convex`.
+`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `tauri`, `electron`, `elysia`, `hono`, `convex`.
 
 `groot add` walks up from the current directory to find the workspace root (identified by `groot.json`). You do not need to `cd` to the workspace root before running it.
 
@@ -45,6 +45,12 @@ groot add expo
 # Add a Hono API
 groot add hono
 
+# Add a Tauri desktop app
+groot add tauri
+
+# Add an Electron desktop app
+groot add electron
+
 # Add a second web app at a custom path (outside the default web slot)
 groot add sveltekit --path apps/marketing
 ```
@@ -53,7 +59,7 @@ groot add sveltekit --path apps/marketing
 
 | Flag | Values | Default | Description |
 |---|---|---|---|
-| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow |
+| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `tauri` \| `electron` \| `elysia` \| `hono` \| `convex` | required | The scaffold to grow |
 | `--path` | workspace-relative path | framework's slot path | Custom destination directory |
 | `--no-install` | — | install on | Skip root `bun install` after growing |
 | `--keep-failed` | — | off | Keep the new scaffold dir on generator failure |

@@ -1,7 +1,7 @@
 ---
 title: "groot init — plant a new bun-first Turborepo workspace"
 sidebarTitle: "init"
-description: "groot init scaffolds a new bun-first Turborepo monorepo. Choose your web, mobile, API, and backend frameworks interactively or with flags."
+description: "groot init scaffolds a new bun-first Turborepo monorepo. Choose your web, mobile, desktop, API, and backend frameworks interactively or with flags."
 ---
 
 `groot init` is the starting point for every groot project. It plants a fresh bun-first Turborepo workspace, wires your chosen frameworks together, and leaves you with a working `bun dev` — all in one command. Run it interactively to pick your stack from a menu, or pass flags to script it end-to-end in CI.
@@ -20,7 +20,7 @@ When you invoke `bun create groot`, bun resolves to the `create-groot` npm packa
 
 `groot init` runs a five-stage pipeline:
 
-1. **Resolve** — combines your CLI flags, an optional `--preset`, and interactive prompts to produce a concrete plan: one framework per slot (web, mobile, api, backend).
+1. **Resolve** — combines your CLI flags, an optional `--preset`, and interactive prompts to produce a concrete plan: one framework per slot (web, mobile, desktop, api, backend).
 2. **Preflight** — confirms Bun ≥ 1.2 is available, checks the target directory, and verifies any required network connectivity before writing a single byte.
 3. **Generate** — calls the official upstream generator for each selected framework (e.g. `create-next-app`, `create-expo-app`) or writes files directly when no upstream generator exists.
 4. **Stitch** — patches the workspace for coherence: updates root `package.json` workspaces globs, writes shared tsconfig paths, and wires cross-cutting integrations (e.g. a Next.js app importing from a Convex backend package).
@@ -37,6 +37,7 @@ Running `groot init` without slot flags launches the interactive prompt flow pow
 
 ◆  Web app?      › Next.js
 ◆  Mobile app?   › Expo
+◆  Desktop app?  › Skip
 ◆  API?          › Elysia
 ◆  Backend?      › Convex
 
@@ -62,6 +63,7 @@ Pressing **Ctrl-C** at any prompt exits immediately with code `130` and writes n
 | `--name` | string | dir basename | Workspace / root package name |
 | `--web` | `next` \| `sveltekit` \| `none` | prompted | Web app in `apps/web` |
 | `--mobile` | `expo` \| `none` | prompted | Mobile app in `apps/mobile` |
+| `--desktop` | `tauri` \| `electron` \| `none` | prompted | Desktop app in `apps/desktop` |
 | `--api` | `elysia` \| `hono` \| `none` | prompted | API in `apps/api` |
 | `--backend` | `convex` \| `none` | prompted | Backend in `packages/backend` |
 | `--preset` | path | — | Read slot selections from a `groot.json` file or workspace |
@@ -79,7 +81,7 @@ Pressing **Ctrl-C** at any prompt exits immediately with code `130` and writes n
 ## --yes defaults
 
 <Note>
-When you pass `--yes` without explicit slot flags, groot picks `--web next --mobile none --api none --backend convex` — a Next.js web app wired to a Convex backend. This is groot's flagship pairing and the fastest way to get a production-ready fullstack workspace on the ground.
+When you pass `--yes` without explicit slot flags, groot picks `--web next --mobile none --desktop none --api none --backend convex` — a Next.js web app wired to a Convex backend. This is groot's flagship pairing and the fastest way to get a production-ready fullstack workspace on the ground.
 </Note>
 
 ## Using a preset

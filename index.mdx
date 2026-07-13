@@ -1,10 +1,10 @@
 ---
 title: "groot: Plant a bun-first Turborepo monorepo"
 sidebarTitle: "Home"
-description: "groot scaffolds a full Turborepo monorepo in one command — web, mobile, API, and backend wired together using official framework generators."
+description: "groot scaffolds a full Turborepo monorepo in one command — web, mobile, desktop, API, and backend wired together using official framework generators."
 ---
 
-groot is a scaffolding CLI that plants a [Turborepo](https://turborepo.com) monorepo and grows it with the apps you pick. Instead of maintaining frozen templates, groot orchestrates each framework's official generator — `create-next-app`, `sv create`, `create-expo-app`, `create-hono`, and more — then stitches the results into one coherent bun workspace with shared configs, consistent dev ports, and a single lockfile.
+groot is a scaffolding CLI that plants a [Turborepo](https://turborepo.com) monorepo and grows it with the apps you pick — across five slots: web, mobile, desktop, API, and backend. Instead of maintaining frozen templates, groot orchestrates each framework's official generator — `create-next-app`, `sv create`, `create-expo-app`, `create-tauri-app`, `create-hono`, and more — then stitches the results into one coherent bun workspace with shared configs, consistent dev ports, and a single lockfile.
 
 <CardGroup cols={2}>
   <Card title="Quick Start" icon="rocket" href="/quickstart">
@@ -35,6 +35,7 @@ Run `groot init my-app` and answer a few prompts. groot plants your Turborepo tr
 |------|-----------|----------|
 | 🌐 Web | Next.js · SvelteKit | `apps/web` |
 | 📱 Mobile | Expo | `apps/mobile` |
+| 🖥️ Desktop | Tauri · Electron | `apps/desktop` |
 | ⚡ API | Elysia · Hono | `apps/api` |
 | 🗄️ Backend | Convex | `packages/backend` |
 
@@ -42,7 +43,7 @@ Run `groot init my-app` and answer a few prompts. groot plants your Turborepo tr
 
 <Steps>
   <Step title="Pick your stack">
-    Answer interactive prompts (or pass flags) to select a web app, mobile app, API, and backend. Skip any slot you don't need.
+    Answer interactive prompts (or pass flags) to select a web app, mobile app, desktop app, API, and backend. Skip any slot you don't need.
   </Step>
   <Step title="groot generates">
     groot runs each framework's official generator with pinned, non-interactive flags. No vendored templates means scaffolds never rot.

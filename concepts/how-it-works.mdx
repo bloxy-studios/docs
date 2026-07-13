@@ -23,6 +23,8 @@ The full pipeline has five internal stages, but from the outside you can think o
     | Next.js   | `create-next-app@16` |
     | SvelteKit | `sv@0.16` |
     | Expo      | `create-expo-app@4` |
+    | Tauri     | `create-tauri-app@4` |
+    | Electron  | `@quick-start/create-electron@1` |
     | Hono      | `create-hono@0.19` |
 
     **Two deliberate exceptions** where groot writes files directly instead of shelling out to a generator:
@@ -41,7 +43,7 @@ The full pipeline has five internal stages, but from the outside you can think o
     | **Workspace globs** | Adds `"workspaces": ["apps/*", "packages/*"]` and `"packageManager": "bun@<pinned>"` to the root `package.json` |
     | **Package naming** | Apps get bare names (`web`, `mobile`, `api`); shared packages get the `@repo/*` namespace (`@repo/backend`, `@repo/typescript-config`) |
     | **TypeScript config** | Next.js is rewired to extend `@repo/typescript-config/nextjs.json`; the shared `packages/typescript-config` package is kept from the Turborepo trunk for all apps to build on |
-    | **Port allocation** | Deterministic, non-colliding dev ports are written into each app — web at `3000`, mobile at `8081`, API at `3001` |
+    | **Port allocation** | Deterministic, non-colliding dev ports are written into each app — web at `3000`, mobile at `8081`, desktop (Tauri) at `1420`, API at `3001`. Electron declares no port (self-wiring). |
     | **Lockfile hygiene** | Any per-app lockfiles left behind by generators are deleted; exactly one root `bun.lock` remains |
     | **`.gitignore`** | Per-app `.gitignore` files stay in place (native git semantics); the root `.gitignore` is topped up to cover workspace basics |
     | **`turbo.json`** | Root tasks (`dev`, `build`, `lint`, `check-types`) are written with correct `outputs` per framework |

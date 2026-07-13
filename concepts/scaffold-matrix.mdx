@@ -4,7 +4,7 @@ sidebarTitle: "Scaffold Matrix"
 description: "Every framework slot groot supports: the generator it invokes, the workspace path it targets, and the deterministic dev port it assigns."
 ---
 
-groot organises its framework choices into four **slots** — `web`, `mobile`, `api`, and `backend`. Each slot maps to a fixed workspace location, a deterministic dev port, and an upstream generator (or a set of files groot writes directly). You pick at most one framework per slot when you run `groot init`, and you can grow additional scaffolds into custom paths later with `groot add`.
+groot organises its framework choices into five **slots** — `web`, `mobile`, `desktop`, `api`, and `backend`. Each slot maps to a fixed workspace location, a deterministic dev port, and an upstream generator (or a set of files groot writes directly). You pick at most one framework per slot when you run `groot init`, and you can grow additional scaffolds into custom paths later with `groot add`.
 
 ## Matrix
 
@@ -13,6 +13,8 @@ groot organises its framework choices into four **slots** — `web`, `mobile`, `
 | `web` | Next.js | `apps/web` | 3000 | `create-next-app@16` |
 | `web` | SvelteKit | `apps/web` | 5173 | `sv@0.16` |
 | `mobile` | Expo | `apps/mobile` | 8081 | `create-expo-app@4` |
+| `desktop` | Tauri | `apps/desktop` | 1420 | `create-tauri-app@4` |
+| `desktop` | Electron | `apps/desktop` | — | `@quick-start/create-electron@1` |
 | `api` | Elysia | `apps/api` | 3001 | *(files written directly)* |
 | `api` | Hono | `apps/api` | 3001 | `create-hono@0.19` |
 | `backend` | Convex | `packages/backend` | — | *(files written directly)* |
@@ -64,6 +66,57 @@ The Metro dev server runs on port `8081` (Metro's default, kept as-is).
 # What groot runs
 bunx create-expo-app@4 apps/mobile \
   --template default@sdk-57 --no-install --yes
+```
+
+### Tauri
+
+groot invokes `create-tauri-app@4` with the `react-ts` template (TypeScript + React frontend) and `--manager bun` so the generated `package.json` and lockfile are bun-native. The generator never installs and never runs `git init`. Tauri lands in `apps/desktop` and gives you a native desktop shell with a Rust backend (`src-tauri/`) and a Vite-powered web frontend.
+
+<Warning>
+  **The positional is a NAME, not a path**. `create-tauri-app` derives the app and Cargo crate names from its positional argument, so groot spawns the generator from the scaffold's *parent* directory (e.g. `apps/`) with the bare directory name — not from the workspace root with `apps/desktop`. This preserves both the default path and `groot add --path` overrides.
+</Warning>
+
+The bundle identifier — Tauri's reverse-domain app id — is derived deterministically from your workspace name: `com.<workspace>.<scaffold-name>`, with each segment lowercased and non-alphanumerics collapsed to hyphens. Overriding `com.tauri.dev` (the generator's default) silences a warning that the generator itself prints on unmodified identifiers.
+
+Dev port **1420** is unique in the matrix and kept as-is. The template couples Vite's `server.port` (with `strictPort: true`) to `src-tauri/tauri.conf.json`'s `build.devUrl` — one port, two files, both must agree. `groot doctor` warns if you drift them.
+
+<Note>
+  **Rust is a dev-time dependency, not a scaffold-time one**. Generating the files and running `bun install` work without cargo installed — the Rust toolchain is only required when you actually run `bun run tauri dev` or `tauri build`. `groot doctor` emits a warning (not a failure) when cargo is missing and points you at [rustup.rs](https://rustup.rs).
+</Note>
+
+Turbo's `build.outputs` gains `dist/**` for Tauri workspaces (the frontend build directory). `src-tauri/target` is Cargo's own cache and is never a turbo output.
+
+```bash
+# What groot runs (spawned with cwd = apps/, positional is the bare name)
+bunx create-tauri-app@4 desktop \
+  --template react-ts --manager bun \
+  --identifier com.<workspace>.desktop --yes
+```
+
+### Electron
+
+groot invokes `@quick-start/create-electron@1` — [electron-vite](https://electron-vite.org)'s scaffolder — with the `react-ts` template and `--skip`, which silences the remaining prompts (overwrite, auto-update, mirror). The generator never installs and never runs `git init`. Electron lands in `apps/desktop` and gives you main, preload, and renderer entry points with Vite handling the renderer.
+
+<Note>
+  **Why electron-vite over Electron Forge**: Electron Forge's own `create-electron-app` force-installs its dependencies with npm or yarn (there is no skip flag) and marks its Vite template experimental. Both are incompatible with groot's scaffold-dry, bun-first pipeline — so groot uses the community-standard electron-vite scaffolder instead.
+</Note>
+
+<Warning>
+  **The positional is a NAME, not a path** — same contract as `create-tauri-app`. groot spawns the generator from the scaffold's *parent* directory with the bare directory name.
+</Warning>
+
+Electron's dev port is **null by design**. electron-vite's renderer dev server is plain Vite (non-strict) and *self-wiring*: it picks whichever port Vite resolves and launches Electron with that URL. There is no fixed number to reserve, so groot declares none and there are no collision warnings with, say, a SvelteKit web app on 5173.
+
+<Warning>
+  **Bun lifecycle nuance** — the `electron` package downloads its runtime binary in a postinstall script, and bun only runs dependency lifecycle scripts for *trusted* packages. `electron` is not on bun's default-trusted list, so groot's stitch stage writes `trustedDependencies: ["electron"]` into the workspace root `package.json` before the install runs. `groot doctor` verifies the runtime landed under `node_modules/electron/dist` (resolved from the app directory, which is layout-agnostic under bun 1.3's isolated layout) and, if it did not, points you at `bun pm trust electron` as the retroactive fix.
+</Warning>
+
+Turbo's `build.outputs` gains `out/**` for Electron workspaces (electron-vite's build directory). Installers produced by electron-builder land in `dist/` and are intentionally not cached.
+
+```bash
+# What groot runs (spawned with cwd = apps/, positional is the bare name)
+bunx @quick-start/create-electron@1 desktop \
+  --template react-ts --skip
 ```
 
 ### Elysia

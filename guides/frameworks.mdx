@@ -1,7 +1,7 @@
 ---
 title: "Per-framework setup notes and known gotchas in groot"
 sidebarTitle: "Frameworks"
-description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Elysia, Hono, and Convex after running groot init or groot add."
+description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Tauri, Electron, Elysia, Hono, and Convex after running groot init or groot add."
 ---
 
 After groot finishes scaffolding, each framework lands in a ready-to-run state — but a few require a manual step or behave in ways worth knowing about. This page covers the post-scaffold notes and known gotchas for every framework groot supports, so you know exactly what to expect from `groot init` onward.
@@ -93,6 +93,117 @@ After groot finishes scaffolding, each framework lands in a ready-to-run state �
   <Warning>
   During the SDK 57 transition period, omitting `--template` from `create-expo-app` yields an SDK 54 project. groot always pins the template tag explicitly (`default@sdk-57`) to avoid this. If you are running the generator manually outside of groot, make sure to pin the template tag.
   </Warning>
+</Accordion>
+
+<Accordion title="Tauri">
+  groot generates Tauri via `create-tauri-app@4` using the `react-ts` template (TypeScript + React frontend) and `--manager bun` so the generated `package.json` and lockfile are bun-native from the start.
+
+  **What gets generated**
+
+  - Vite-powered React frontend under `apps/desktop/src/`
+  - Rust backend under `apps/desktop/src-tauri/` with `Cargo.toml` and `tauri.conf.json`
+  - `vite.config.ts` with `server.port: 1420` and `strictPort: true`
+
+  **Rust is a dev-time dependency**
+
+  Scaffolding and `bun install` succeed *without* cargo installed — `create-tauri-app` writes pure npm files. Rust is only needed to actually run:
+
+  ```sh
+  bun run --cwd apps/desktop tauri dev
+  ```
+
+  If cargo is missing, `groot doctor` emits a warning (not a failure) with a pointer to [rustup.rs](https://rustup.rs). On Linux you also need `webkit2gtk` and related system libraries; see the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) page.
+
+  **The name-not-path positional gotcha**
+
+  `create-tauri-app` treats its positional argument as an *app name* (used to derive the Cargo crate name), not a path. groot spawns the generator from `apps/` with the bare directory name — running it from the workspace root with `apps/desktop` would produce a crate named `apps/desktop`, which is invalid. If you invoke `create-tauri-app` manually, do the same.
+
+  **Bundle identifier derivation**
+
+  Tauri requires a reverse-domain bundle identifier (`com.example.app`) and warns when you leave the default `com.tauri.dev` in place. groot derives one deterministically from your workspace name:
+
+  ```
+  com.<workspace-slug>.<scaffold-name>
+  ```
+
+  Each segment is lowercased, and characters outside `[a-z0-9-]` are collapsed to hyphens. So `my-app` at `apps/desktop` becomes `com.my-app.desktop`. Edit `src-tauri/tauri.conf.json` before your first release build if you want a different identifier — it becomes your app's permanent identity on macOS, iOS, Windows, and Linux app stores.
+
+  **Dev server**
+
+  The renderer runs on port **1420**. This is unique in groot's matrix and kept as-is. The port is defined in two files that must agree — `vite.config.ts` (`server.port`) and `src-tauri/tauri.conf.json` (`build.devUrl`). `groot doctor` warns if they drift.
+
+  **Doctor checks**
+
+  Beyond the shared workspace checks, the Tauri adapter contributes:
+
+  - `tauri.conf.json` present and parseable (fail if missing)
+  - `build.devUrl` port matches the port recorded in `groot.json` (warn on drift)
+  - `cargo` available on `PATH` (warn if missing)
+  - Vite config present (warn if missing — the template ships one)
+
+  <Note>
+    Turbo's `build.outputs` for a Tauri scaffold is `dist/**` (the frontend build). `src-tauri/target/` is Cargo's own cache and is never a turbo output.
+  </Note>
+</Accordion>
+
+<Accordion title="Electron">
+  groot generates Electron via [electron-vite](https://electron-vite.org)'s scaffolder — `@quick-start/create-electron@1` — using the `react-ts` template. This is the community-standard Electron + Vite + TS scaffold and the only Electron generator that fits groot's scaffold-dry, bun-first pipeline.
+
+  **What gets generated**
+
+  - `apps/desktop/src/main/` — Electron main process
+  - `apps/desktop/src/preload/` — preload scripts
+  - `apps/desktop/src/renderer/` — Vite-powered React renderer
+  - `electron.vite.config.ts` — the template's contract file
+
+  **Why not Electron Forge**
+
+  Electron Forge's own `create-electron-app` force-installs its dependencies with npm or yarn (there is no skip flag) and marks its Vite template experimental. groot uses electron-vite instead — same author community, mature Vite support, and fully silenceable with `--skip`.
+
+  **No fixed dev port**
+
+  Unlike Tauri, Electron has **no declared dev port**. electron-vite's renderer dev server is plain Vite (non-strict) and self-wiring: it picks a port at start-up and launches Electron with the resolved URL. groot records the port as `null` in `groot.json`, and no port-collision warning is ever emitted for an Electron workspace.
+
+  **Bun trust — the electron postinstall runs a binary download**
+
+  <Warning>
+    The `electron` npm package downloads its runtime binary during a postinstall script, and bun only runs dependency lifecycle scripts for *trusted* packages. `electron` is not on bun's default-trusted list, so a plain `bun install` leaves the runtime missing.
+  </Warning>
+
+  groot handles this automatically at the stitch stage:
+
+  1. It writes `trustedDependencies: ["electron"]` into the workspace root `package.json` (idempotent — safe to re-stitch).
+  2. `bun install` at the workspace root then runs electron's postinstall and downloads the binary.
+  3. If for any reason the binary is still missing after install (a workspace edited by hand, an interrupted install), `bun pm trust electron` at the workspace root retroactively runs the blocked script:
+
+     ```sh
+     bun pm trust electron
+     ```
+
+     `groot doctor` prints this exact command as its fix hint.
+
+  <Note>
+    Bun treats an explicit `trustedDependencies` list as *replacing* its default allowlist. If you later add another package that needs its postinstall to run, add it to the same array — bun will no longer fall back to its defaults for that workspace.
+  </Note>
+
+  **Bun 1.3 isolated layout**
+
+  Under bun 1.3's isolated install layout, packages live in `node_modules/.bun` with symlinks in the *declaring* workspace member. There is **no top-level `node_modules/electron`** in an electron workspace. Anything checking electron's install state must resolve from the app directory — that is what `groot doctor` does internally, and it is what you should do if you write your own checks.
+
+  **Dev server**
+
+  Run the app with `bun run --cwd apps/desktop dev` or `bun run dev` from the workspace root. electron-vite starts the Vite renderer and launches Electron pointed at it.
+
+  **Doctor checks**
+
+  Beyond the shared workspace checks, the Electron adapter contributes:
+
+  - `electron.vite.config.{ts,mjs}` present (fail if missing)
+  - electron runtime downloaded (warn if the package is installed but `dist/` inside it is missing — fix is `bun pm trust electron`)
+
+  <Note>
+    Turbo's `build.outputs` for an Electron scaffold is `out/**` (electron-vite's default build directory). electron-builder installers land in `dist/` and are intentionally excluded from turbo caching.
+  </Note>
 </Accordion>
 
 <Accordion title="Elysia">
