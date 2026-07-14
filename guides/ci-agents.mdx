@@ -115,6 +115,16 @@ groot add hono --path apps/gateway
 
 Port-collision warnings arrive on stderr and never contaminate the JSON output.
 
+## --github is for local scaffolding, not CI
+
+The `--github` flag on `groot init` (see [GitHub publishing](/commands/init#github-publishing)) is a convenience for local workstation scaffolding — it creates and pushes a GitHub repository via the `gh` CLI right after the initial commit. It is **not** a CI hook:
+
+- `gh` authentication is a separate concern from groot. groot only runs `gh auth status` to short-circuit early; it never logs you in.
+- If `gh` is missing or unauthenticated, `--github` degrades to printed manual commands and the run still exits `0`. That's the right behavior for a developer laptop but usually not what you want from a CI pipeline, where a silently-skipped publish step is easy to miss.
+- CI pipelines that create GitHub repositories typically already run inside a repo (a checkout on a runner), or use the GitHub API with `GITHUB_TOKEN`, or provision repositories out of band with Terraform / gh-org tooling.
+
+Prefer `--no-git` (or `--no-git` plus a scripted `git init` + `gh repo create` if you really need a fresh repo from CI) — and reserve `--github` for interactive scaffolding on your own machine.
+
 ## groot add in scripts
 
 Use `groot add` to grow an existing workspace non-interactively from a script:

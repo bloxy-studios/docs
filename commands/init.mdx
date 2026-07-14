@@ -48,8 +48,22 @@ Running `groot init` without slot flags launches the interactive prompt flow pow
 ◇  Stitching workspace…
 ◇  Installing workspace (bun install)…
 ◇  Initializing git repository…
+◇  Publishing to GitHub…
 
 🌳 I am groot — your workspace is planted.
+✓ GitHub: https://github.com/you/my-app
+```
+
+When you pass `--github`, the plan summary shown before you confirm includes a `github` row so you see the publish step ahead of time:
+
+```text
+◆  Your plan
+│  web        next
+│  api        elysia
+│  backend    convex
+│  github     create private repo + push initial commit (gh)
+│
+◇  Plant it? › Yes
 ```
 
 Pressing **Ctrl-C** at any prompt exits immediately with code `130` and writes nothing to disk.
@@ -70,6 +84,8 @@ Pressing **Ctrl-C** at any prompt exits immediately with code `130` and writes n
 | `--json` | — | off | With `--dry-run`: emit machine-readable plan on stdout |
 | `--no-install` | — | install on | Skip root `bun install` |
 | `--no-git` | — | git on | Skip `git init` + initial commit |
+| `--github` | — | off | After the initial commit, create + push a private GitHub repo via `gh` — see [GitHub publishing](#github-publishing) |
+| `--public` | — | off | With `--github`: create the repository as public instead of private |
 | `--dir-conflict` | `error` \| `merge` \| `increment` | `error` | Policy for a non-empty target directory |
 | `--keep-failed` | — | off | Keep the target dir if a generator fails |
 | `--verbose` | — | off | Stream generator output instead of spinners |
@@ -119,6 +135,67 @@ bunx create-groot@latest init my-app \
 ```
 
 Every slot is fixed by a flag, `--yes` suppresses the confirmation prompt, and there is no TTY requirement — safe to run in any CI environment.
+
+To plant a workspace and publish it to GitHub in a single command, add `--github` (and optionally `--public`):
+
+```sh
+bunx create-groot@latest init my-app \
+  --web next --backend convex \
+  --yes --github
+```
+
+groot runs the full pipeline, makes the initial commit, then creates a private GitHub repository and pushes to it via [`gh`](https://cli.github.com). Add `--public` if you want the repository to be public instead. If `gh` isn't installed or isn't logged in, the workspace is still planted successfully — groot prints the manual commands to run yourself (see below).
+
+## GitHub publishing
+
+Passing `--github` extends the [Verify](/concepts/how-it-works) stage with a publish step that runs **after the initial commit**:
+
+1. `Bun.which("gh")` — detect the [GitHub CLI](https://cli.github.com) on `PATH`.
+2. `gh auth status` — confirm you are logged in to at least one host.
+3. `gh repo create <name> --private --source=. --remote=origin --push` — create the repository and push the initial commit. `--public` swaps `--private` for `--public`; the repository name is the workspace name (from `--name` or the target directory basename).
+
+When it succeeds, groot prints the repository URL on its own line and surfaces the same fact in the plan summary, dry-run output, prompt confirmation, and next-steps report:
+
+```text
+✓ GitHub: https://github.com/you/my-app
+```
+
+### Preconditions (checked before anything is generated)
+
+These are usage errors — groot exits `2` and writes nothing, so a dry run that would fail for real fails identically:
+
+- **`--github` with `--no-git` is refused.** `gh repo create --push` hard-errors on a repo with zero commits, so groot needs the initial commit that `--no-git` skips.
+- **`--public` without `--github` is refused.** `--public` is only meaningful as a modifier of `--github`.
+- **A git identity must exist.** Both `user.name` and `user.email` must be set globally (or via system config) — groot resolves the identity the same way the fresh `git init` will, so a caller repo's *local* identity doesn't count. When either half is missing, groot prints the exact fix:
+
+  ```sh
+  git config --global user.name "Your Name"
+  git config --global user.email "you@example.com"
+  ```
+
+- **The target must not already be a git repository.** `--github` is for repositories groot itself creates and commits. When `.git` already exists, groot refuses up front and prints the manual `gh repo create …` command to run yourself once you've committed.
+
+### The degrade-never-fail contract
+
+Anything that goes wrong *after* generation degrades to printed next steps and **exits `0`** — the workspace on disk is already valid.
+
+- **`gh` is missing from `PATH`.** groot prints the install link, `gh auth login`, and the full `gh repo create …` invocation as numbered next steps:
+
+  ```text
+  ●  GitHub CLI (gh) not found on PATH — the repository was not created.
+
+  Next steps:
+    1. cd my-app
+    2. Install the GitHub CLI: https://cli.github.com
+    3. gh auth login
+    4. gh repo create my-app --private --source=. --remote=origin --push
+    5. bun dev
+  ```
+
+- **`gh` is installed but not logged in.** `gh auth status` exits `1`, groot short-circuits before running `gh repo create`, and the next steps are `gh auth login` + the create command.
+- **`gh repo create` fails** (for example, exit `4` when unauthenticated, or exit `1` when the name is taken). groot prints the first stderr line and the exit code, then the manual `gh repo create …` command.
+
+In every failure case the run exits `0`, git history is intact, and you can copy-paste the printed command to finish publishing yourself.
 
 ## Next steps output
 

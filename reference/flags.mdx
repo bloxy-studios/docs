@@ -24,6 +24,8 @@ groot's three commands — `groot init`, `groot add`, and `groot doctor` — eac
 | `--json` | — | off | With `--dry-run`: emit the machine-readable plan (manifest schema) on stdout instead of human prose |
 | `--no-install` | — | install on | Skip the root `bun install` step after scaffolding |
 | `--no-git` | — | git on | Skip `git init` and the initial commit |
+| `--github` | — | off | After the initial commit, create a private GitHub repository and push via the [`gh` CLI](https://cli.github.com) (`gh repo create <name> --private --source=. --remote=origin --push`). See [GitHub publishing](/commands/init#github-publishing) |
+| `--public` | — | off | Only valid together with `--github`: create the repository as public instead of private |
 | `--dir-conflict` | `error` \| `merge` \| `increment` | `error` | Policy for a non-empty target directory: `error` aborts, `merge` writes into the existing directory, `increment` appends a numeric suffix to find a free name |
 | `--keep-failed` | — | off | Keep the target directory when a generator fails, instead of cleaning it up (useful for inspecting partial output) |
 | `--verbose` | — | off | Stream raw output from upstream generators instead of showing progress spinners |
