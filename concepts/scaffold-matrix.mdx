@@ -13,6 +13,7 @@ groot organises its framework choices into four **slots** — `web`, `mobile`, `
 | `web` | Next.js | `apps/web` | 3000 | `create-next-app@16` |
 | `web` | SvelteKit | `apps/web` | 5173 | `sv@0.16` |
 | `mobile` | Expo | `apps/mobile` | 8081 | `create-expo-app@4` |
+| `mobile` | React Native | `apps/mobile` | 8081 | `@react-native-community/cli@20` |
 | `api` | Elysia | `apps/api` | 3001 | *(files written directly)* |
 | `api` | Hono | `apps/api` | 3001 | `create-hono@0.19` |
 | `api` | Fastify | `apps/api` | 3001 | `fastify-cli@8` |
@@ -65,6 +66,29 @@ The Metro dev server runs on port `8081` (Metro's default, kept as-is).
 # What groot runs
 bunx create-expo-app@4 apps/mobile \
   --template default@sdk-57 --no-install --yes
+```
+
+### React Native (bare)
+
+groot invokes the official `@react-native-community/cli@20` `init` command to scaffold a bare React Native app — the same generator the React Native docs recommend for projects that need direct access to native code. The template is the community `@react-native-community/template` at whatever version the CLI resolves for the current React Native release.
+
+groot runs the generator in a disposable staging directory under the OS tempdir, then moves the output into `apps/mobile`. The CLI's registry-URL lookup shells out to `npm config get registry`, which fails with `EBADDEVENGINES` inside the bun-declared workspace root — staging under a neutral ancestor sidesteps that permanently and preserves the user's real registry configuration.
+
+Because bare Metro (unlike Expo since SDK 52) resolves nothing outside the app directory, groot's stitch stage rewrites `apps/mobile/metro.config.js` to add `watchFolders: [workspaceRoot]` plus `resolver.nodeModulesPaths` for the app and the workspace root. Without that wiring, apps fail at runtime with `"Unable to resolve module"` errors for anything bun hoists to the workspace root. `groot doctor` checks both halves of the wiring persistently.
+
+CocoaPods, Xcode, and the Android SDK remain the user's build-time responsibility — groot never runs them. Pods installation is explicitly skipped during scaffolding (`--install-pods false`), and Bare RN has no public-env mechanism the way Expo has `EXPO_PUBLIC_CONVEX_URL`, so the Convex env line is written as a plain `CONVEX_URL=` when Convex is also selected.
+
+The Metro dev server runs on port `8081` — the same port Expo uses. Adding React Native next to an existing Expo scaffold with `--path` triggers a `groot doctor` port-collision warning until you change one of the ports.
+
+<Warning>
+  The React Native CLI derives the native project identifiers (Android `applicationId`, iOS target) from the target directory's basename and validates it as a JavaScript identifier — no dashes, no reserved names, nothing containing `helloworld`. groot vets `--path` up front with the same rules and exits with code `2` before touching disk if the basename would be rejected. Pick a `--path` whose last segment is a valid name (for example, `apps/companion`).
+</Warning>
+
+```bash
+# What groot runs (in a staged tempdir, then moved into apps/mobile)
+bunx @react-native-community/cli@20 init mobile \
+  --pm bun --skip-install --install-pods false \
+  --skip-git-init --replace-directory false
 ```
 
 ### Elysia
