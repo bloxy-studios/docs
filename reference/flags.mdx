@@ -17,7 +17,7 @@ groot's three commands — `groot init`, `groot add`, and `groot doctor` — eac
 | `--web` | `next` \| `sveltekit` \| `none` | prompted | Web app framework to scaffold in `apps/web` |
 | `--mobile` | `expo` \| `none` | prompted | Mobile app framework to scaffold in `apps/mobile` |
 | `--api` | `elysia` \| `hono` \| `fastify` \| `none` | prompted | API framework to scaffold in `apps/api` |
-| `--backend` | `convex` \| `none` | prompted | Backend framework to scaffold in `packages/backend` |
+| `--backend` | `convex` \| `supabase` \| `none` | prompted | Backend framework to scaffold in `packages/backend` |
 | `--preset` | file path or dir | — | Load slot selections from a `groot.json` — accepts a path to the file itself or to a workspace directory that contains one |
 | `--yes`, `-y` | — | off | Accept defaults for all slots not already fixed by flags; enables fully non-interactive mode when combined with slot flags or a preset |
 | `--dry-run` | — | off | Print the fully resolved plan and exit without writing any files |
@@ -40,7 +40,7 @@ When you pass `--yes` with no slot flags, groot accepts its flagship defaults: `
 
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
-| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `fastify` \| `convex` | required | The scaffold to grow — this is a positional argument, not a flag |
+| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `fastify` \| `convex` \| `supabase` | required | The scaffold to grow — this is a positional argument, not a flag |
 | `--path` | workspace-relative dir | framework's default slot path | Custom destination directory for the new scaffold; must be absent or empty, and must not already be claimed by `groot.json` |
 | `--no-install` | — | install on | Skip the root `bun install` after the scaffold is grown |
 | `--keep-failed` | — | off | Keep the new scaffold directory if its generator fails, instead of rolling it back |

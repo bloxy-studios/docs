@@ -12,7 +12,7 @@ description: "groot add grows an existing groot workspace with a new scaffold �
 groot add <scaffold> [flags]
 ```
 
-`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `elysia`, `hono`, `fastify`, `convex`.
+`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `elysia`, `hono`, `fastify`, `convex`, `supabase`.
 
 `groot add` walks up from the current directory to find the workspace root (identified by `groot.json`). You do not need to `cd` to the workspace root before running it.
 
@@ -48,6 +48,9 @@ groot add hono
 # Add a Fastify API
 groot add fastify
 
+# Add a Supabase backend
+groot add supabase
+
 # Add a second web app at a custom path (outside the default web slot)
 groot add sveltekit --path apps/marketing
 ```
@@ -56,7 +59,7 @@ groot add sveltekit --path apps/marketing
 
 | Flag | Values | Default | Description |
 |---|---|---|---|
-| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `fastify` \| `convex` | required | The scaffold to grow |
+| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `fastify` \| `convex` \| `supabase` | required | The scaffold to grow |
 | `--path` | workspace-relative path | framework's slot path | Custom destination directory |
 | `--no-install` | — | install on | Skip root `bun install` after growing |
 | `--keep-failed` | — | off | Keep the new scaffold dir on generator failure |

@@ -17,6 +17,7 @@ groot organises its framework choices into four **slots** — `web`, `mobile`, `
 | `api` | Hono | `apps/api` | 3001 | `create-hono@0.19` |
 | `api` | Fastify | `apps/api` | 3001 | `fastify-cli@8` |
 | `backend` | Convex | `packages/backend` | — | *(files written directly)* |
+| `backend` | Supabase | `packages/backend` | — | `supabase@2 init` (postCommand) |
 
 <Note>
   Each slot can hold only one framework at a time by default. To grow a second web app — for example, a marketing site alongside your main product — use `groot add --path apps/marketing` to scaffold it into a custom path that doesn't conflict with an occupied slot.
@@ -150,6 +151,72 @@ The `convex/_generated` stubs are vendored and committed — the same strategy C
 </Note>
 
 Apps that consume the backend depend on `"@repo/backend": "workspace:*"` and deep-import `@repo/backend/convex/_generated/api` directly — there is no `exports` map on the backend package, which matches the pattern Convex's reference monorepo uses.
+
+### Supabase
+
+Supabase runs locally through Docker, so there is no cloud port to allocate at scaffold time — the local stack takes Supabase's own `54321+` block whenever you start it, which is why the matrix leaves the port column blank. groot uses a two-part layout: it writes the `@repo/backend` package shell first, then runs `bunx supabase@2 init` as a `postCommand` inside that package so the official CLI drops `supabase/config.toml` next to groot's own files.
+
+**What groot writes (before `supabase init` runs)**
+
+```text
+packages/backend/
+├── package.json              # @repo/backend · dev · stop · typegen · typecheck scripts
+├── database.types.ts         # placeholder matching `supabase gen types` output for an empty schema
+├── .env.example              # SUPABASE_URL / SUPABASE_ANON_KEY placeholders (values left empty)
+├── tsconfig.json
+└── README.md                 # Docker / login / typegen next-steps
+```
+
+The `database.types.ts` placeholder follows the Convex vendored-stubs pattern — apps that deep-import `@repo/backend/database.types` typecheck immediately, before Docker is ever started. When you eventually run `bun run typegen`, the Supabase CLI regenerates the file against your live schema.
+
+Scripts on the `@repo/backend` package:
+
+| Script | Command |
+|--------|---------|
+| `dev` | `supabase start` (boots the local Docker stack) |
+| `stop` | `supabase stop` |
+| `typegen` | `supabase gen types typescript --local > database.types.ts` |
+| `typecheck` | `tsc --noEmit` |
+
+**What `supabase init` writes**
+
+`bunx supabase@2 init` runs as a post-command with its working directory pinned to `packages/backend`. It has no directory argument — it always writes `supabase/` into its cwd — which is why groot creates the package shell first. The 2.x CLI is non-interactive by default (the old IDE prompts moved behind an opt-in `--interactive` flag that also requires a TTY), so the run is safe in CI.
+
+<Note>
+  Docker is not started, `supabase login` is not run, and real codegen is not attempted during scaffolding. All three are deferred to the "next steps" block after generate — mirroring the Convex login pattern. `.env.example` values stay empty because `supabase start` prints the real keys on first boot; no secrets are ever vendored.
+</Note>
+
+**Stitching**
+
+groot's stitch stage rewrites `supabase/config.toml`'s `project_id` field — which defaults to the cwd basename (`"backend"`) — to your workspace name. The `project_id` names Docker containers, so leaving it at `"backend"` would collide any time you ran two groot workspaces on the same host.
+
+Env plumbing is per-frontend, using the same public-env prefixes as Convex. For each frontend in the workspace, groot writes two lines to that app's `.env.example`:
+
+| Framework | Env vars written |
+|-----------|------------------|
+| Next.js | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| SvelteKit, Astro | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` |
+| TanStack Start, React Router, Vite | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+| Nuxt | `NUXT_PUBLIC_SUPABASE_URL`, `NUXT_PUBLIC_SUPABASE_ANON_KEY` |
+| Expo | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
+| React Native (bare) | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
+
+**Doctor checks**
+
+`groot doctor` runs two Supabase-specific checks:
+
+- `supabase/config.toml` exists inside `packages/backend`.
+- `database.types.ts` exists — if it is still the empty-schema placeholder, doctor emits a warning pointing at `bun run --cwd packages/backend typegen` so the file tracks your live schema.
+
+**Next steps output**
+
+After scaffolding, `printNextSteps` includes the Docker line — `groot add supabase` prints the same hint so the CLI's guidance stays symmetric with `groot init`:
+
+```sh
+bun run --cwd packages/backend dev   # supabase start (Docker required)
+```
+
+Apps that consume the backend depend on `"@repo/backend": "workspace:*"` and deep-import `@repo/backend/database.types` directly, matching the deep-import pattern Convex uses.
 
 <CardGroup cols={2}>
   <Card title="How It Works" icon="diagram-project" href="/concepts/how-it-works">
