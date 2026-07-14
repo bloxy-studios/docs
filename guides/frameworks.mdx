@@ -1,7 +1,7 @@
 ---
 title: "Per-framework setup notes and known gotchas in groot"
 sidebarTitle: "Frameworks"
-description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, Elysia, Hono, Fastify, and Convex after running groot init or groot add."
+description: "Post-scaffold setup steps and known gotchas for Next.js, SvelteKit, Expo, React Native, Elysia, Hono, Fastify, and Convex after running groot init or groot add."
 ---
 
 After groot finishes scaffolding, each framework lands in a ready-to-run state — but a few require a manual step or behave in ways worth knowing about. This page covers the post-scaffold notes and known gotchas for every framework groot supports, so you know exactly what to expect from `groot init` onward.
@@ -92,6 +92,65 @@ After groot finishes scaffolding, each framework lands in a ready-to-run state �
 
   <Warning>
   During the SDK 57 transition period, omitting `--template` from `create-expo-app` yields an SDK 54 project. groot always pins the template tag explicitly (`default@sdk-57`) to avoid this. If you are running the generator manually outside of groot, make sure to pin the template tag.
+  </Warning>
+</Accordion>
+
+<Accordion title="React Native (bare)">
+  groot generates a bare React Native project via the official `@react-native-community/cli@20 init` command using the community `@react-native-community/template`. Pick this over Expo when you need direct access to native code, a custom native module, or a build pipeline that doesn't fit inside Expo's managed workflow.
+
+  **What gets generated**
+
+  - A bare React Native app under `apps/mobile/` (or your `--path`) with the community template
+  - `metro.config.js`, `babel.config.js`, `tsconfig.json`, and the `ios/` and `android/` native project directories
+  - `.gitignore` — the template ships it as `_gitignore` and the CLI's own `UNDERSCORED_DOTFILES` step renames it during scaffolding
+
+  **Metro monorepo wiring**
+
+  Unlike Expo (which auto-configures Metro for monorepos since SDK 52), bare Metro resolves nothing outside the app directory. groot's stitch stage rewrites the template's `metro.config.js` to add:
+
+  ```js
+  const path = require("node:path");
+  const projectRoot = __dirname;
+  const workspaceRoot = path.resolve(projectRoot, "../..");
+
+  const config = {
+    watchFolders: [workspaceRoot],
+    resolver: {
+      nodeModulesPaths: [
+        path.resolve(projectRoot, "node_modules"),
+        path.resolve(workspaceRoot, "node_modules"),
+      ],
+    },
+  };
+  ```
+
+  Without this, apps break at runtime with `"Unable to resolve module"` errors for any dependency bun hoists to the workspace root. `groot doctor` checks both halves of the wiring persistently — a half-restored config (only `watchFolders`, or only `nodeModulesPaths`) still warns until both are present as active assignments. Commented-out mentions do not count.
+
+  If you rewrite the config by hand later, keep both `watchFolders` and `resolver.nodeModulesPaths` as active object entries or property assignments and doctor stays green.
+
+  **Dev server**
+
+  The Metro dev server runs on port **8081** — the same default as Expo. Adding React Native next to an existing Expo scaffold (or vice versa) triggers a `groot doctor` port-collision warning that persists until you change one of the ports.
+
+  **CocoaPods, Xcode, and the Android SDK**
+
+  groot never installs Pods, Xcode, or the Android SDK — those stay build-time concerns for your machine. The generator is run with `--install-pods false --skip-install --skip-git-init`, so a fresh `groot init` never blocks on native toolchains. Your first real device or simulator build still needs:
+
+  - **iOS:** Xcode + CocoaPods (`bundle exec pod install` inside `apps/mobile/ios/`)
+  - **Android:** Android Studio + a configured `ANDROID_HOME` and platform SDKs
+
+  See the [React Native environment setup guide](https://reactnative.dev/docs/set-up-your-environment) for the current toolchain matrix.
+
+  **Env prefix — no public-env mechanism**
+
+  Bare React Native has no equivalent of Expo's `EXPO_PUBLIC_*` env-var mechanism. When Convex is also selected, groot writes the mobile env line as a plain `CONVEX_URL=` (not `EXPO_PUBLIC_CONVEX_URL=`). You are responsible for wiring the value into the runtime yourself — for example, via [`react-native-config`](https://github.com/luggit/react-native-config) or a build-time script.
+
+  **`--path` name validation**
+
+  The React Native CLI derives the native project identifiers (Android `applicationId`, iOS target) from the target directory's basename and validates it as a JavaScript identifier. groot vets `--path` up front with the same rules — no dashes, no reserved names (`react`, `react-native`, java keywords), nothing containing `helloworld` (the template placeholder) — and exits with code `2` before running the generator if the basename would be rejected. Pick a `--path` whose last segment is a valid name, such as `apps/companion`.
+
+  <Warning>
+  The React Native CLI's registry-URL lookup shells out to `npm config get registry`, which fails with `EBADDEVENGINES` inside a bun-declared workspace root. groot works around this by running the generator in a disposable staging directory under the OS tempdir and then moving the output into `apps/mobile`. This is invisible during a normal `groot init` or `groot add react-native` — but if you run `npx @react-native-community/cli init` manually inside an existing groot workspace, expect the failure.
   </Warning>
 </Accordion>
 

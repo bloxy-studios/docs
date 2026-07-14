@@ -12,7 +12,7 @@ description: "groot add grows an existing groot workspace with a new scaffold �
 groot add <scaffold> [flags]
 ```
 
-`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `elysia`, `hono`, `fastify`, `convex`.
+`<scaffold>` is a required positional argument. Valid values are: `next`, `sveltekit`, `expo`, `react-native`, `elysia`, `hono`, `fastify`, `convex`.
 
 `groot add` walks up from the current directory to find the workspace root (identified by `groot.json`). You do not need to `cd` to the workspace root before running it.
 
@@ -42,6 +42,9 @@ groot add <scaffold> [flags]
 # Add an Expo mobile app to an existing workspace
 groot add expo
 
+# Add a bare React Native mobile app at a custom path
+groot add react-native --path apps/companion
+
 # Add a Hono API
 groot add hono
 
@@ -56,7 +59,7 @@ groot add sveltekit --path apps/marketing
 
 | Flag | Values | Default | Description |
 |---|---|---|---|
-| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `elysia` \| `hono` \| `fastify` \| `convex` | required | The scaffold to grow |
+| `<scaffold>` | `next` \| `sveltekit` \| `expo` \| `react-native` \| `elysia` \| `hono` \| `fastify` \| `convex` | required | The scaffold to grow |
 | `--path` | workspace-relative path | framework's slot path | Custom destination directory |
 | `--no-install` | — | install on | Skip root `bun install` after growing |
 | `--keep-failed` | — | off | Keep the new scaffold dir on generator failure |
@@ -74,10 +77,14 @@ The backend slot is single-occupancy even with `--path` — the `@repo/backend` 
 
 Path equality with any existing scaffold is always refused, regardless of slot. Relative `--path` values resolve against the workspace root (found via `groot.json` walk-up), not the current working directory.
 
+<Note>
+For `groot add react-native`, the last segment of `--path` must be a valid JavaScript identifier that the React Native CLI will accept as a native project name — no dashes, no reserved names (`react`, `react-native`, java keywords), and nothing containing `helloworld` (the template placeholder). groot validates this up front and exits with code `2` before running the generator if the basename would be rejected.
+</Note>
+
 ## Port collisions
 
 <Warning>
-Adding Hono, Fastify, or Elysia next to an existing API from that group (all three default to port 3001) results in a warning, not an error. Your workspace is still grown successfully. Run `groot doctor` to see the collision listed persistently until you resolve it by manually changing the dev port in one app's start script or `src/server.ts`.
+Adding Hono, Fastify, or Elysia next to an existing API from that group (all three default to port 3001), or adding React Native next to Expo (both default to port 8081), results in a warning, not an error. Your workspace is still grown successfully. Run `groot doctor` to see the collision listed persistently until you resolve it by manually changing the dev port in one app's start script or `src/server.ts`.
 </Warning>
 
 ## Dry run
